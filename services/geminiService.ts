@@ -2,8 +2,15 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisRequest, ArticleAnalysis, RiskCategory, EcommerceData } from "../types";
 import { supabase } from "./supabaseClient";
 
-// Initialize the API client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the API client with environment variable
+declare const __GEMINI_API_KEY__: string;
+const apiKey = __GEMINI_API_KEY__ || '';
+
+if (!apiKey) {
+  console.warn('⚠️ GEMINI_API_KEY is not set. Please add it to your .env file.');
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 const SYSTEM_INSTRUCTION = `
 You are ARTEMIS (AI Real-Time Event Monitoring & Intelligence System), a specialized Sentinel for Social Harmony and Public Safety. 
