@@ -1,0 +1,5 @@
+{
+  "name": "ARTEMIS Intelligence",
+  "description": "AI Real-Time Event Monitoring & Intelligence System that analyzes raw article text for sentiment, topics, and key entities using Gemini.",
+  "requestFramePermissions": []
+}

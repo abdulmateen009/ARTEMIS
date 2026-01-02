@@ -1,0 +1,433 @@
+import React, { useState, useEffect } from 'react';
+import { ArticleAnalysis, ProcessingStatus, AppSettings, AlertEntry } from './types';
+import AnalysisInput from './components/AnalysisInput';
+import ArticleCard from './components/ArticleCard';
+import DashboardStats from './components/DashboardStats';
+import DataSourcesView from './components/DataSourcesView';
+import SettingsView from './components/SettingsView';
+import HistoryView from './components/HistoryView';
+import AlertsView from './components/AlertsView';
+import UsageGuideView from './components/UsageGuideView';
+import EcommerceView from './components/EcommerceView';
+import { supabase } from './services/supabaseClient';
+
+type View = 'dashboard' | 'datasources' | 'alerts' | 'settings' | 'history' | 'usage' | 'ecommerce';
+type NotificationType = 'success' | 'error' | 'info';
+
+interface NotificationState {
+  message: string;
+  type: NotificationType;
+}
+
+const REQUIRED_SQL = `
+-- Run this in your Supabase SQL Editor to fix the missing table error
+create table if not exists public.news_sentiment_table (
+  article_id uuid not null primary key,
+  created_at timestamp with time zone default now(),
+  source text,
+  url text,
+  ip_address text,
+  date text,
+  summary text,
+  primary_topic text,
+  sentiment_score double precision,
+  sentiment_label text,
+  risk_category text,
+  key_entities text[],
+  "references" jsonb,
+  original_post_content text,
+  alert_summary text
+);
+
+alter table public.news_sentiment_table enable row level security;
+
+create policy "Enable read access for all users"
+on public.news_sentiment_table for select to public using (true);
+
+create policy "Enable insert access for all users"
+on public.news_sentiment_table for insert to public with check (true);
+`;
+
+const App: React.FC = () => {
+  const [articles, setArticles] = useState<ArticleAnalysis[]>([]);
+  const [status, setStatus] = useState<ProcessingStatus>(ProcessingStatus.IDLE);
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [notification, setNotification] = useState<NotificationState | null>(null);
+  const [dbError, setDbError] = useState<boolean>(false);
+  const [showSqlSetup, setShowSqlSetup] = useState<boolean>(false);
+  
+  // App-wide settings and alerts state
+  const [settings, setSettings] = useState<AppSettings>({
+      email: 'analyst@company.com',
+      emailEnabled: true,
+      sensitivity: 'medium'
+  });
+  const [alerts, setAlerts] = useState<AlertEntry[]>([]);
+
+  // Load data from Supabase on initial mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('news_sentiment_table')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          const errMsg = error.message || JSON.stringify(error);
+          console.error('Error fetching Supabase history:', errMsg);
+          
+          // Check for specific "missing table" error (PostgREST code 42P01 or similar message)
+          if (errMsg.includes('Could not find the table') || errMsg.includes('relation "public.news_sentiment_table" does not exist')) {
+            setDbError(true);
+          }
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Map DB columns to our strict ArticleAnalysis type.
+          const mappedArticles: ArticleAnalysis[] = data.map((row: any) => ({
+            article_id: row.article_id || 'unknown',
+            source: row.source || 'Unknown Source',
+            url: row.url || '',
+            date: row.date || new Date().toISOString().split('T')[0],
+            summary: row.summary || 'No summary available',
+            primary_topic: row.primary_topic || 'Other',
+            sentiment_score: row.sentiment_score ?? 0,
+            sentiment_label: row.sentiment_label || 'Neutral',
+            risk_category: row.risk_category || 'None',
+            key_entities: row.key_entities || [],
+            references: row.references || [],
+            ip_address: row.ip_address,
+            original_post_content: row.original_post_content
+          }));
+          setArticles(mappedArticles);
+        }
+      } catch (err) {
+        // Handle unexpected network or parsing errors
+        console.error('Failed to load history:', err instanceof Error ? err.message : String(err));
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  const showNotification = (message: string, type: NotificationType = 'success') => {
+    setNotification({ message, type });
+    const duration = type === 'error' ? 5000 : 3000;
+    setTimeout(() => {
+      setNotification(prev => (prev?.message === message ? null : prev));
+    }, duration);
+  };
+
+  const handleAnalysisComplete = (result: ArticleAnalysis) => {
+    setArticles(prev => [result, ...prev]);
+  };
+
+  const handleBatchAnalysisComplete = (results: ArticleAnalysis[]) => {
+    setArticles(prev => [...results, ...prev]);
+  };
+
+  const handleClearData = () => {
+    setArticles([]);
+    setAlerts([]);
+  };
+  
+  const handleAddAlert = (alert: AlertEntry) => {
+      setAlerts(prev => [alert, ...prev]);
+  };
+
+  const NavItem = ({ view, label, isNew }: { view: View, label: string, isNew?: boolean }) => (
+    <button
+      onClick={() => setCurrentView(view)}
+      className={`w-full text-left flex items-center justify-between py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+        currentView === view
+          ? 'bg-white/10 text-white'
+          : 'text-slate-400 hover:text-white hover:bg-white/5'
+      }`}
+    >
+      <span>{label}</span>
+      {isNew && (
+        <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-2 shadow-sm">
+          NEW
+        </span>
+      )}
+    </button>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row relative">
+      {/* DB Error Modal/Banner */}
+      {dbError && (
+        <div className="fixed bottom-0 left-0 right-0 bg-orange-600 text-white p-4 z-50 flex flex-col md:flex-row items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3 mb-3 md:mb-0">
+            <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-bold">Database Table Missing</p>
+              <p className="text-sm opacity-90">The table <code>news_sentiment_table</code> was not found in your Supabase project.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+             <button 
+              onClick={() => setShowSqlSetup(true)}
+              className="bg-white text-orange-700 px-4 py-2 rounded font-medium text-sm hover:bg-orange-50"
+             >
+               View SQL Fix
+             </button>
+             <button 
+              onClick={() => setDbError(false)}
+              className="text-white hover:bg-orange-700 px-3 py-2 rounded"
+             >
+               Dismiss
+             </button>
+          </div>
+        </div>
+      )}
+
+      {/* SQL Setup Modal */}
+      {showSqlSetup && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-800">Database Setup Required</h3>
+              <button onClick={() => setShowSqlSetup(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <p className="text-gray-600 mb-4">
+                To enable persistent history, please run the following SQL query in your Supabase Dashboard's SQL Editor:
+              </p>
+              <div className="relative">
+                <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg text-sm font-mono overflow-x-auto">
+                  {REQUIRED_SQL}
+                </pre>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(REQUIRED_SQL);
+                    showNotification("SQL copied to clipboard!", "success");
+                  }}
+                  className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end">
+              <button 
+                onClick={() => setShowSqlSetup(false)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification Container */}
+      {notification && (
+        <div className="fixed top-6 right-6 z-50 animate-fade-in-down">
+          <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 text-white min-w-[300px] ${
+            notification.type === 'success' ? 'bg-emerald-600' :
+            notification.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+          }`}>
+            {notification.type === 'success' && (
+              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            {notification.type === 'error' && (
+              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            {notification.type === 'info' && (
+              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <div>
+              <p className="font-medium text-sm">{notification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotification(null)}
+              className="ml-auto text-white/80 hover:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-8">
+            <img 
+              src="./assets/images/logo.svg" 
+              alt="ARTEMIS Logo" 
+              className="w-8 h-8 rounded-lg"
+              onError={(e) => {
+                // Fallback if image fails to load
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement?.insertAdjacentHTML('afterbegin', '<div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-white">A</div>');
+              }}
+            />
+            <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
+          </div>
+          
+          <nav className="space-y-1">
+            <NavItem view="dashboard" label="Dashboard" />
+            <NavItem view="ecommerce" label="E-Commerce Intelligence" isNew={true} />
+            <NavItem view="history" label="History" />
+            <NavItem view="datasources" label="Data Sources" />
+            <NavItem view="alerts" label="Alerts" />
+            <NavItem view="usage" label="Usage Guidelines" />
+            <NavItem view="settings" label="Settings" />
+          </nav>
+        </div>
+        
+        <div className="p-6 border-t border-slate-800 mt-auto">
+          <div className="text-xs text-slate-500">
+            Powered by Gemini 3 Flash
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <header className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {currentView === 'dashboard' && 'Intelligence Dashboard'}
+              {currentView === 'ecommerce' && 'E-Commerce Sentiment Analyser'}
+              {currentView === 'history' && 'Analysis History'}
+              {currentView === 'datasources' && 'Data Sources'}
+              {currentView === 'alerts' && 'Alert Configuration'}
+              {currentView === 'usage' && 'Usage & Documentation'}
+              {currentView === 'settings' && 'System Settings'}
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              {currentView === 'dashboard' && 'Real-time sentiment analysis and topic classification'}
+              {currentView === 'ecommerce' && 'Market trends, platform metrics, and product reviews'}
+              {currentView === 'history' && 'Detailed log of all analyzed articles and events'}
+              {currentView === 'datasources' && 'Manage Social Media feeds and Targets'}
+              {currentView === 'alerts' && 'View automated security alerts and notifications'}
+              {currentView === 'usage' && 'Project documentation and PDF guidelines'}
+              {currentView === 'settings' && 'Manage API keys and account preferences'}
+            </p>
+          </div>
+          <div className="text-sm text-gray-500 hidden md:block">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </header>
+
+        {currentView === 'dashboard' && (
+          <>
+            {/* Stats Row */}
+            <DashboardStats articles={articles} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column: Input Form */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-8">
+                  <AnalysisInput 
+                    onAnalysisComplete={handleAnalysisComplete} 
+                    status={status}
+                    setStatus={setStatus}
+                  />
+                  
+                  <div className="mt-6 bg-blue-50 border border-blue-100 p-4 rounded-xl">
+                    <h4 className="text-blue-900 font-medium text-sm mb-2">How it works</h4>
+                    <p className="text-blue-800 text-xs leading-relaxed">
+                      Paste raw text from your RSS scraper or news feed. 
+                      The system uses Google Gemini to extract a structured JSON summary, 
+                      classify the topic, and calculate a sentiment score (-1.0 to 1.0).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Feed */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Recent Analysis</h2>
+                  <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    {articles.length} Items
+                  </span>
+                </div>
+
+                {articles.length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No articles analyzed yet</h3>
+                    <p className="mt-1 text-sm text-gray-500">Use the form on the left to process your first news article.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {articles.map((article) => (
+                      <ArticleCard key={article.article_id} article={article} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {currentView === 'ecommerce' && (
+          <EcommerceView />
+        )}
+
+        {currentView === 'history' && (
+          <HistoryView articles={articles} />
+        )}
+
+        {currentView === 'datasources' && (
+          <DataSourcesView 
+            onArticlesFound={handleBatchAnalysisComplete}
+            notify={showNotification}
+            settings={settings}
+            onAddAlert={handleAddAlert}
+          />
+        )}
+        
+        {currentView === 'settings' && (
+          <SettingsView 
+            articles={articles}
+            onClearData={handleClearData} 
+            onImportData={(data, mode) => {
+              if (mode === 'replace') {
+                setArticles(data);
+              } else {
+                setArticles(prev => [...data, ...prev]);
+              }
+            }}
+            notify={showNotification}
+            settings={settings}
+            onUpdateSettings={setSettings}
+          />
+        )}
+
+        {currentView === 'alerts' && (
+          <AlertsView alerts={alerts} />
+        )}
+
+        {currentView === 'usage' && (
+          <UsageGuideView />
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default App;
