@@ -1,12 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertEntry } from '../types';
 
 interface AlertsViewProps {
   alerts: AlertEntry[];
 }
 
+interface EmailConfig {
+  id: string;
+  role: string;
+  email: string;
+  isActive: boolean;
+}
+
 const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
+  const [isAdmin, setIsAdmin] = useState(false);
   
+  const [emailConfigs, setEmailConfigs] = useState<EmailConfig[]>([
+    { id: '1', role: 'Chief Security Officer', email: 'cso@artemis.corp', isActive: true },
+    { id: '2', role: 'Legal Compliance', email: 'legal.audit@artemis.corp', isActive: true },
+    { id: '3', role: 'Public Relations Lead', email: 'press.office@artemis.corp', isActive: false },
+    { id: '4', role: 'Regional Crisis Team', email: 'apac.crisis@artemis.corp', isActive: false },
+    { id: '5', role: 'System Administrator', email: 'sysadmin@artemis.corp', isActive: true },
+  ]);
+
+  const handleToggleEmail = (id: string) => {
+    if (!isAdmin) return; // Prevent toggling if not admin
+    
+    setEmailConfigs(prev => prev.map(config => 
+      config.id === id ? { ...config, isActive: !config.isActive } : config
+    ));
+  };
+
+  const handleEmailChange = (id: string, newEmail: string) => {
+    setEmailConfigs(prev => prev.map(config => 
+      config.id === id ? { ...config, email: newEmail } : config
+    ));
+  };
+
   const handleOpenMail = (alert: AlertEntry) => {
       const subject = encodeURIComponent(alert.subject);
       const body = encodeURIComponent(alert.body);
@@ -14,7 +44,97 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+       
+       {/* 1. Email Configuration Section */}
+       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+             <div>
+                <h2 className="text-lg font-semibold text-gray-800">Alert Distribution List</h2>
+                <p className="text-sm text-gray-500">Manage recipients for high-priority security notifications.</p>
+             </div>
+             
+             {/* Admin Toggle */}
+             <label className="flex items-center cursor-pointer select-none bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                <div className="mr-3 text-gray-700 font-medium text-xs uppercase tracking-wider">
+                  {isAdmin ? 'Admin Access: UNLOCKED' : 'Admin Access: LOCKED'}
+                </div>
+                <div className="relative">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only" 
+                    checked={isAdmin} 
+                    onChange={() => setIsAdmin(!isAdmin)} 
+                  />
+                  <div className={`block w-10 h-6 rounded-full transition-colors ${isAdmin ? 'bg-indigo-600' : 'bg-gray-300'}`}></div>
+                  <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isAdmin ? 'transform translate-x-4' : ''}`}></div>
+                </div>
+             </label>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+             {emailConfigs.map((config) => (
+                <div key={config.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                   <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ${
+                          config.isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                          {config.role.charAt(0)}
+                      </div>
+                      <div className="flex-1 max-w-md">
+                          <h4 className={`text-sm font-bold ${config.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                              {config.role}
+                          </h4>
+                          {isAdmin ? (
+                            <input 
+                                type="email"
+                                value={config.email}
+                                onChange={(e) => handleEmailChange(config.id, e.target.value)}
+                                className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border"
+                                placeholder="Enter email address"
+                            />
+                          ) : (
+                            <p className={`text-xs ${config.isActive ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {config.email}
+                            </p>
+                          )}
+                      </div>
+                   </div>
+
+                   {/* Right Aligned Buttons */}
+                   <div className="flex items-center ml-4">
+                      <button
+                         onClick={() => handleToggleEmail(config.id)}
+                         disabled={!isAdmin}
+                         className={`
+                            px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all shadow-sm
+                            ${config.isActive 
+                                ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                            }
+                            ${!isAdmin && 'opacity-60 cursor-not-allowed'}
+                         `}
+                      >
+                         {config.isActive ? 'Active' : 'Not Active'}
+                      </button>
+                   </div>
+                </div>
+             ))}
+          </div>
+          
+          {!isAdmin && (
+              <div className="bg-gray-50 p-2 text-center text-xs text-gray-400 border-t border-gray-100">
+                  <span className="flex items-center justify-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Enable Admin Access to modify distribution settings
+                  </span>
+              </div>
+          )}
+       </div>
+
+       {/* 2. Existing Log Section */}
        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
            <div className="flex justify-between items-center mb-4">
                 <div>

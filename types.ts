@@ -54,7 +54,7 @@ export interface AnalysisRequest {
 export interface DataSource {
   id: string;
   name: string;
-  platform: 'RSS' | 'Facebook' | 'X (Twitter)' | 'Instagram' | 'TikTok';
+  platform: 'RSS' | 'Facebook' | 'X (Twitter)' | 'Instagram' | 'TikTok' | 'News Paper' | 'Magazine';
   url: string;
   status: 'active' | 'error' | 'inactive';
   lastScraped: string;

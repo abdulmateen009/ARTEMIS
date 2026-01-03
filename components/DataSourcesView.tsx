@@ -13,15 +13,17 @@ interface DataSourcesViewProps {
 
 const MOCK_SOURCES: DataSource[] = [
   { id: '1', name: 'Public News RSS', platform: 'RSS', url: 'https://news.google.com/rss', status: 'active', lastScraped: '10 mins ago' },
-  { id: '2', name: 'Monitoring Page: Religious Debates', platform: 'Facebook', url: 'https://facebook.com/groups/debates', status: 'active', lastScraped: '1 hour ago' },
-  { id: '3', name: 'Hashtag: #PublicOpinion', platform: 'X (Twitter)', url: 'https://x.com/search?q=public', status: 'active', lastScraped: '25 mins ago' },
+  { id: '2', name: 'The Daily Times', platform: 'News Paper', url: 'https://dailytimes.example.com', status: 'active', lastScraped: '5 mins ago' },
+  { id: '3', name: 'Tech Weekly', platform: 'Magazine', url: 'https://techweekly.example.com', status: 'active', lastScraped: '1 hour ago' },
+  { id: '4', name: 'Monitoring Page: Religious Debates', platform: 'Facebook', url: 'https://facebook.com/groups/debates', status: 'active', lastScraped: '1 hour ago' },
+  { id: '5', name: 'Hashtag: #PublicOpinion', platform: 'X (Twitter)', url: 'https://x.com/search?q=public', status: 'active', lastScraped: '25 mins ago' },
 ];
 
 const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, notify, settings, onAddAlert }) => {
   const [sources, setSources] = useState<DataSource[]>(MOCK_SOURCES);
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
-  const [newPlatform, setNewPlatform] = useState<DataSource['platform']>('Facebook');
+  const [newPlatform, setNewPlatform] = useState<DataSource['platform']>('News Paper');
   const [isScanning, setIsScanning] = useState(false);
   const [lastScanData, setLastScanData] = useState<{articles: ArticleAnalysis[], summary: string} | null>(null);
 
@@ -48,23 +50,27 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
   const handleScan = async () => {
     setIsScanning(true);
     setLastScanData(null); // Reset previous results
-    if(notify) notify("Initiating social media scrape sequence...", 'info');
+    if(notify) notify("Initiating social media & news scrape sequence...", 'info');
     
     try {
       // 1. Simulate scraping diverse content from the configured platforms
-      const rawPosts = await generateSocialScrapeBatch(3, 'Facebook, TikTok, and X');
+      const rawPosts = await generateSocialScrapeBatch(3, 'News Papers, Magazines, and Social Media');
       
       // 2. Analyze each post
       const analyzedResults: ArticleAnalysis[] = [];
-      let highRiskCount = 0;
+      let alertCount = 0;
 
       for (const post of rawPosts) {
         const analysis = await analyzeArticle(post);
         analyzedResults.push(analysis);
 
-        // Check for risk and trigger automated alert if email is enabled
-        if (analysis.risk_category !== 'None' && analysis.risk_category !== undefined) {
-          highRiskCount++;
+        // TRIGGER CONDITION:
+        // Alert if Risk Category is detected OR if Sentiment is Negative/Very Negative
+        const isNegativeSentiment = ['Negative', 'Very Negative'].includes(analysis.sentiment_label);
+        const isHighRisk = analysis.risk_category !== 'None' && analysis.risk_category !== undefined;
+
+        if (isHighRisk || isNegativeSentiment) {
+          alertCount++;
           
           if (settings.emailEnabled) {
               try {
@@ -102,8 +108,8 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
       }
 
       if (notify) {
-        if (highRiskCount > 0) {
-            notify(`SCAN COMPLETE: ${highRiskCount} High-Risk items detected!`, 'error');
+        if (alertCount > 0) {
+            notify(`SCAN COMPLETE: ${alertCount} Alerts Sent (Negative Sentiment/Risk Detected)`, 'error');
         } else {
             notify(`Scan complete. ${analyzedResults.length} items processed.`, 'success');
         }
@@ -146,10 +152,10 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
                 <h3 className="text-emerald-400 font-semibold text-sm mb-0.5">AI News Intelligence & Sentiment Radar</h3>
                 <p className="text-slate-400 text-xs italic mb-3">Transforming Real-Time Media Noise into Actionable Business Strategy</p>
                 <p className="text-slate-300 text-sm">
-                    Scrape configured public IDs, pages, and channels for sensitive content harmful to public thoughts or religious beliefs.
+                    Actively scanning configured Newspapers, Magazines, and Social channels.
                     {settings.emailEnabled && (
                         <span className="block mt-1 text-emerald-400 text-xs font-semibold">
-                            ✓ Auto-Alerts Enabled: Sending reports to {settings.email}
+                            ✓ Auto-Alerts Enabled: Triggering on Negative Sentiment to {settings.email}
                         </span>
                     )}
                 </p>
@@ -285,7 +291,7 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Monitor New Target</h2>
         <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Page/Channel Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Page/Channel/News/Magazine</label>
             <input 
               type="text" 
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
@@ -302,6 +308,8 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
                 onChange={e => setNewPlatform(e.target.value as any)}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
              >
+                <option value="News Paper">News Paper</option>
+                <option value="Magazine">Magazine</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Instagram">Instagram</option>
                 <option value="X (Twitter)">X (Twitter)</option>
@@ -314,7 +322,7 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
             <input 
               type="text" 
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-              placeholder="https://facebook.com/groups/..."
+              placeholder="https://..."
               value={newUrl}
               onChange={e => setNewUrl(e.target.value)}
               required
@@ -331,7 +339,7 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Monitored Channels</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Monitored Channels & Links</h2>
           <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
             {sources.length} Configured
           </span>
@@ -357,6 +365,8 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
                            source.platform === 'Facebook' ? 'bg-blue-100 text-blue-800' :
                            source.platform === 'X (Twitter)' ? 'bg-gray-100 text-gray-800' :
                            source.platform === 'TikTok' ? 'bg-pink-100 text-pink-800' :
+                           source.platform === 'News Paper' ? 'bg-indigo-100 text-indigo-800' :
+                           source.platform === 'Magazine' ? 'bg-teal-100 text-teal-800' :
                            'bg-purple-100 text-purple-800'
                        }`}>
                            {source.platform}
