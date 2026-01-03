@@ -26,7 +26,7 @@ Constraint/Output Format Instruction:
 Strictly generate only a single JSON object.
 `;
 
-export const analyzeArticle = async (request: AnalysisRequest): Promise<ArticleAnalysis> => {
+export const analyzeArticle = async (request: AnalysisRequest, useThinkingMode: boolean = false): Promise<ArticleAnalysis> => {
   try {
     const prompt = `
       Raw Content / Caption: ${request.text} 
@@ -34,57 +34,65 @@ export const analyzeArticle = async (request: AnalysisRequest): Promise<ArticleA
       Date: ${request.date}
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            article_id: { type: Type.STRING, description: "Generate a UUID" },
-            source: { type: Type.STRING },
-            date: { type: Type.STRING },
-            summary: { type: Type.STRING, description: "A concise summary of the post/article." },
-            primary_topic: { 
-              type: Type.STRING, 
-              enum: [
-                'Technology', 'Finance/Markets', 'Politics/Policy', 'Health/Science', 
-                'Environment', 'Sports', 'Culture/Lifestyle', 'Religion/Beliefs', 'Social Unrest', 'Other'
-              ] 
-            },
-            sentiment_score: { type: Type.NUMBER, description: "Score from -1.0 to 1.0" },
-            sentiment_label: { 
-              type: Type.STRING, 
-              enum: ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive'] 
-            },
-            risk_category: {
-              type: Type.STRING,
-              enum: ['None', 'Religious Desecration', 'Ideological Subversion', 'Hate Speech', 'Public Incitement', 'Misinformation']
-            },
-            key_entities: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "List 3-5 key organizations, people, or products."
-            },
-            references: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  type: { type: Type.STRING, enum: ['Profile', 'Page', 'Group', 'Channel', 'External'] },
-                  name: { type: Type.STRING },
-                  url: { type: Type.STRING }
-                },
-                required: ["type", "name", "url"]
-              },
-              description: "Extract mentioned social IDs, pages, or channels with their URLs."
-            }
+    const model = useThinkingMode ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+
+    const baseConfig: any = {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          article_id: { type: Type.STRING, description: "Generate a UUID" },
+          source: { type: Type.STRING },
+          date: { type: Type.STRING },
+          summary: { type: Type.STRING, description: "A concise summary of the post/article." },
+          primary_topic: { 
+            type: Type.STRING, 
+            enum: [
+              'Technology', 'Finance/Markets', 'Politics/Policy', 'Health/Science', 
+              'Environment', 'Sports', 'Culture/Lifestyle', 'Religion/Beliefs', 'Social Unrest', 'Other'
+            ] 
           },
-          required: ["article_id", "source", "date", "summary", "primary_topic", "sentiment_score", "sentiment_label", "risk_category", "key_entities", "references"]
-        }
+          sentiment_score: { type: Type.NUMBER, description: "Score from -1.0 to 1.0" },
+          sentiment_label: { 
+            type: Type.STRING, 
+            enum: ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive'] 
+          },
+          risk_category: {
+            type: Type.STRING,
+            enum: ['None', 'Religious Desecration', 'Ideological Subversion', 'Hate Speech', 'Public Incitement', 'Misinformation']
+          },
+          key_entities: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING },
+            description: "List 3-5 key organizations, people, or products."
+          },
+          references: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING, enum: ['Profile', 'Page', 'Group', 'Channel', 'External'] },
+                name: { type: Type.STRING },
+                url: { type: Type.STRING }
+              },
+              required: ["type", "name", "url"]
+            },
+            description: "Extract mentioned social IDs, pages, or channels with their URLs."
+          }
+        },
+        required: ["article_id", "source", "date", "summary", "primary_topic", "sentiment_score", "sentiment_label", "risk_category", "key_entities", "references"]
       }
+    };
+
+    if (useThinkingMode) {
+      baseConfig.thinkingConfig = { thinkingBudget: 32768 };
+    }
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      config: baseConfig
     });
 
     if (!response.text) {
@@ -336,7 +344,7 @@ export const getEcommerceInsights = async (): Promise<EcommerceData> => {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

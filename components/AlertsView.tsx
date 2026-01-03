@@ -14,6 +14,9 @@ interface EmailConfig {
 
 const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
   
   const [emailConfigs, setEmailConfigs] = useState<EmailConfig[]>([
     { id: '1', role: 'Chief Security Officer', email: 'cso@artemis.corp', isActive: true },
@@ -23,8 +26,39 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
     { id: '5', role: 'System Administrator', email: 'sysadmin@artemis.corp', isActive: true },
   ]);
 
+  const handleAdminToggle = () => {
+    if (isAdmin) {
+      // If already admin, we can lock it immediately
+      setIsAdmin(false);
+    } else {
+      // If trying to unlock, show auth screen
+      setShowAuthScreen(true);
+      setPassword('');
+      setAuthError('');
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Demo credential check
+    if (password === 'admin009') {
+      setIsAdmin(true);
+      setShowAuthScreen(false);
+      setAuthError('');
+    } else {
+      setAuthError('Access Denied: Invalid Security Credentials');
+      setPassword('');
+    }
+  };
+
+  const handleCancelAuth = () => {
+    setShowAuthScreen(false);
+    setPassword('');
+    setAuthError('');
+  };
+
   const handleToggleEmail = (id: string) => {
-    if (!isAdmin) return; // Prevent toggling if not admin
+    if (!isAdmin) return; 
     
     setEmailConfigs(prev => prev.map(config => 
       config.id === id ? { ...config, isActive: !config.isActive } : config
@@ -44,8 +78,67 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
        
+       {/* Security Gateway Overlay */}
+       {showAuthScreen && (
+         <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4 animate-fade-in-down">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-slate-50 border-b border-gray-200 p-6 flex flex-col items-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">Security Clearance Required</h3>
+                    <p className="text-sm text-gray-500 text-center mt-2">
+                       This section is restricted to authorized personnel only. Please verify your identity.
+                    </p>
+                </div>
+                
+                <form onSubmit={handleLogin} className="p-8 space-y-6">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Admin Password</label>
+                        <input 
+                          type="password" 
+                          autoFocus
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white"
+                          placeholder="••••••••"
+                        />
+                        {authError && (
+                            <p className="text-red-600 text-xs font-bold mt-2 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {authError}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button 
+                           type="button" 
+                           onClick={handleCancelAuth}
+                           className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-600 font-bold hover:bg-gray-50 text-sm transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                           type="submit" 
+                           className="flex-[2] px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-200 transition-transform active:scale-95"
+                        >
+                            Authenticate Access
+                        </button>
+                    </div>
+                    
+                    <div className="text-center">
+                        <p className="text-[10px] text-gray-400">Demo Access: Use password <span className="font-mono bg-gray-100 px-1 rounded">admin009</span></p>
+                    </div>
+                </form>
+            </div>
+         </div>
+       )}
+
        {/* 1. Email Configuration Section */}
        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -55,21 +148,24 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
              </div>
              
              {/* Admin Toggle */}
-             <label className="flex items-center cursor-pointer select-none bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                <div className="mr-3 text-gray-700 font-medium text-xs uppercase tracking-wider">
+             <div 
+               onClick={handleAdminToggle}
+               className={`flex items-center cursor-pointer select-none px-4 py-2 rounded-lg border transition-all duration-200 group ${isAdmin ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+             >
+                <div className={`mr-3 font-bold text-xs uppercase tracking-wider transition-colors ${isAdmin ? 'text-red-700' : 'text-gray-500'}`}>
                   {isAdmin ? 'Admin Access: UNLOCKED' : 'Admin Access: LOCKED'}
                 </div>
-                <div className="relative">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only" 
-                    checked={isAdmin} 
-                    onChange={() => setIsAdmin(!isAdmin)} 
-                  />
-                  <div className={`block w-10 h-6 rounded-full transition-colors ${isAdmin ? 'bg-indigo-600' : 'bg-gray-300'}`}></div>
-                  <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isAdmin ? 'transform translate-x-4' : ''}`}></div>
+                <div className="relative h-6 w-10">
+                  <div className={`block w-10 h-6 rounded-full transition-colors duration-200 ${isAdmin ? 'bg-red-600' : 'bg-gray-300'}`}></div>
+                  <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 flex items-center justify-center ${isAdmin ? 'transform translate-x-4' : ''}`}>
+                      {isAdmin ? (
+                          <svg className="w-2.5 h-2.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      ) : (
+                          <svg className="w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      )}
+                  </div>
                 </div>
-             </label>
+             </div>
           </div>
 
           <div className="divide-y divide-gray-100">
@@ -90,7 +186,7 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                                 type="email"
                                 value={config.email}
                                 onChange={(e) => handleEmailChange(config.id, e.target.value)}
-                                className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border"
+                                className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition-colors"
                                 placeholder="Enter email address"
                             />
                           ) : (

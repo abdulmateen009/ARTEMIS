@@ -55,6 +55,7 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<NotificationState | null>(null);
   const [dbError, setDbError] = useState<boolean>(false);
   const [showSqlSetup, setShowSqlSetup] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // App-wide settings and alerts state
   const [settings, setSettings] = useState<AppSettings>({
@@ -77,7 +78,6 @@ const App: React.FC = () => {
           const errMsg = error.message || JSON.stringify(error);
           console.error('Error fetching Supabase history:', errMsg);
           
-          // Check for specific "missing table" error (PostgREST code 42P01 or similar message)
           if (errMsg.includes('Could not find the table') || errMsg.includes('relation "public.news_sentiment_table" does not exist')) {
             setDbError(true);
           }
@@ -85,7 +85,6 @@ const App: React.FC = () => {
         }
 
         if (data && data.length > 0) {
-          // Map DB columns to our strict ArticleAnalysis type.
           const mappedArticles: ArticleAnalysis[] = data.map((row: any) => ({
             article_id: row.article_id || 'unknown',
             source: row.source || 'Unknown Source',
@@ -104,7 +103,6 @@ const App: React.FC = () => {
           setArticles(mappedArticles);
         }
       } catch (err) {
-        // Handle unexpected network or parsing errors
         console.error('Failed to load history:', err instanceof Error ? err.message : String(err));
       }
     };
@@ -139,10 +137,13 @@ const App: React.FC = () => {
 
   const NavItem = ({ view, label, isNew }: { view: View, label: string, isNew?: boolean }) => (
     <button
-      onClick={() => setCurrentView(view)}
-      className={`w-full text-left flex items-center justify-between py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+      onClick={() => {
+        setCurrentView(view);
+        setIsSidebarOpen(false);
+      }}
+      className={`w-full text-left flex items-center justify-between py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
         currentView === view
-          ? 'bg-white/10 text-white'
+          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
           : 'text-slate-400 hover:text-white hover:bg-white/5'
       }`}
     >
@@ -156,10 +157,10 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative">
-      {/* DB Error Modal/Banner */}
+    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
+      {/* DB Error Modal */}
       {dbError && (
-        <div className="fixed bottom-0 left-0 right-0 bg-orange-600 text-white p-4 z-50 flex flex-col md:flex-row items-center justify-between shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-orange-600 text-white p-4 z-[70] flex flex-col md:flex-row items-center justify-between shadow-lg">
           <div className="flex items-center gap-3 mb-3 md:mb-0">
             <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -170,25 +171,15 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3">
-             <button 
-              onClick={() => setShowSqlSetup(true)}
-              className="bg-white text-orange-700 px-4 py-2 rounded font-medium text-sm hover:bg-orange-50"
-             >
-               View SQL Fix
-             </button>
-             <button 
-              onClick={() => setDbError(false)}
-              className="text-white hover:bg-orange-700 px-3 py-2 rounded"
-             >
-               Dismiss
-             </button>
+             <button onClick={() => setShowSqlSetup(true)} className="bg-white text-orange-700 px-4 py-2 rounded font-medium text-sm hover:bg-orange-50">View SQL Fix</button>
+             <button onClick={() => setDbError(false)} className="text-white hover:bg-orange-700 px-3 py-2 rounded">Dismiss</button>
           </div>
         </div>
       )}
 
       {/* SQL Setup Modal */}
       {showSqlSetup && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-gray-800">Database Setup Required</h3>
@@ -199,18 +190,11 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="p-6 overflow-y-auto">
-              <p className="text-gray-600 mb-4">
-                To enable persistent history, please run the following SQL query in your Supabase Dashboard's SQL Editor:
-              </p>
+              <p className="text-gray-600 mb-4">Run the following SQL query in your Supabase Dashboard:</p>
               <div className="relative">
-                <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-                  {REQUIRED_SQL}
-                </pre>
+                <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg text-sm font-mono overflow-x-auto">{REQUIRED_SQL}</pre>
                 <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(REQUIRED_SQL);
-                    showNotification("SQL copied to clipboard!", "success");
-                  }}
+                  onClick={() => { navigator.clipboard.writeText(REQUIRED_SQL); showNotification("SQL copied!", "success"); }}
                   className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs"
                 >
                   Copy
@@ -218,214 +202,212 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end">
-              <button 
-                onClick={() => setShowSqlSetup(false)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                Close
-              </button>
+              <button onClick={() => setShowSqlSetup(false)} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Close</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast Notification Container */}
+      {/* Toast Notification */}
       {notification && (
-        <div className="fixed top-6 right-6 z-50 animate-fade-in-down">
-          <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 text-white min-w-[300px] ${
+        <div className="fixed top-6 right-6 z-[90] animate-fade-in-down w-full max-w-sm px-4 md:px-0">
+          <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 text-white ${
             notification.type === 'success' ? 'bg-emerald-600' :
             notification.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
           }`}>
-            {notification.type === 'success' && (
-              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            {notification.type === 'error' && (
-              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            {notification.type === 'info' && (
-              <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <div>
-              <p className="font-medium text-sm">{notification.message}</p>
-            </div>
-            <button 
-              onClick={() => setNotification(null)}
-              className="ml-auto text-white/80 hover:text-white"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+             {notification.type === 'success' && <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+             {notification.type === 'error' && <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+             <p className="font-medium text-sm flex-1">{notification.message}</p>
+             <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
         </div>
       )}
 
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static flex-shrink-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
-            <img 
-              src="./assets/images/logo.svg" 
-              alt="ARTEMIS Logo" 
-              className="w-8 h-8 rounded-lg"
-              onError={(e) => {
-                // Fallback if image fails to load
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement?.insertAdjacentHTML('afterbegin', '<div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-white">A</div>');
-              }}
-            />
-            <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div>
+               <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
+               <p className="text-xs text-slate-400">Intelligence System</p>
+            </div>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-2">
             <NavItem view="dashboard" label="Dashboard" />
-            <NavItem view="ecommerce" label="E-Commerce Intelligence" isNew={true} />
-            <NavItem view="history" label="History" />
+            <NavItem view="ecommerce" label="E-Commerce Intel" isNew={true} />
             <NavItem view="datasources" label="Data Sources" />
+            <NavItem view="history" label="History Log" />
             <NavItem view="alerts" label="Alerts" />
-            <NavItem view="usage" label="Usage Guidelines" />
-            <NavItem view="settings" label="Settings" />
+            <NavItem view="usage" label="Usage Guide" />
+            <div className="pt-4 mt-4 border-t border-slate-800">
+               <NavItem view="settings" label="Settings" />
+            </div>
           </nav>
         </div>
         
-        <div className="p-6 border-t border-slate-800 mt-auto">
-          <div className="text-xs text-slate-500">
-            Powered by Gemini 3 Flash
+        <div className="p-6 mt-auto border-t border-slate-800 bg-slate-950/50">
+          <div className="flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+             <span className="text-xs text-slate-400 font-medium">System Operational</span>
           </div>
+          <p className="text-[10px] text-slate-600 mt-2">v2.4.0 • Gemini 3 Pro</p>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {currentView === 'dashboard' && 'Intelligence Dashboard'}
-              {currentView === 'ecommerce' && 'E-Commerce Sentiment Analyser'}
-              {currentView === 'history' && 'Analysis History'}
-              {currentView === 'datasources' && 'Data Sources'}
-              {currentView === 'alerts' && 'Alert Configuration'}
-              {currentView === 'usage' && 'Usage & Documentation'}
-              {currentView === 'settings' && 'System Settings'}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              {currentView === 'dashboard' && 'Real-time sentiment analysis and topic classification'}
-              {currentView === 'ecommerce' && 'Market trends, platform metrics, and product reviews'}
-              {currentView === 'history' && 'Detailed log of all analyzed articles and events'}
-              {currentView === 'datasources' && 'Manage Social Media feeds and Targets'}
-              {currentView === 'alerts' && 'View automated security alerts and notifications'}
-              {currentView === 'usage' && 'Project documentation and PDF guidelines'}
-              {currentView === 'settings' && 'Manage API keys and account preferences'}
-            </p>
-          </div>
-          <div className="text-sm text-gray-500 hidden md:block">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
-        </header>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50">
+         
+         {/* Mobile Header */}
+         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-30 shrink-0">
+             <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                         <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                     </svg>
+                 </div>
+                 <span className="font-bold text-gray-900">ARTEMIS</span>
+             </div>
+             <button 
+                 onClick={() => setIsSidebarOpen(true)} 
+                 className="p-2 text-gray-600 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
+             >
+                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                 </svg>
+             </button>
+         </header>
 
-        {currentView === 'dashboard' && (
-          <>
-            {/* Stats Row */}
-            <DashboardStats articles={articles} />
+         {/* Scrollable Main View */}
+         <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+            <div className="max-w-7xl mx-auto">
+                <header className="mb-8 hidden md:flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                        {currentView === 'dashboard' && 'Intelligence Dashboard'}
+                        {currentView === 'ecommerce' && 'E-Commerce Analysis'}
+                        {currentView === 'history' && 'Analysis History'}
+                        {currentView === 'datasources' && 'Data Sources'}
+                        {currentView === 'alerts' && 'Alert Configuration'}
+                        {currentView === 'usage' && 'Documentation'}
+                        {currentView === 'settings' && 'System Settings'}
+                        </h1>
+                        <p className="text-gray-500 mt-2">
+                        {currentView === 'dashboard' && 'Real-time sentiment monitoring and risk detection'}
+                        {currentView === 'ecommerce' && 'Market trends, platform metrics, and product reviews'}
+                        {currentView === 'history' && 'Complete archive of analyzed events'}
+                        {currentView === 'datasources' && 'Configure social media feeds and news scrapers'}
+                        {currentView === 'alerts' && 'Manage automated security notifications'}
+                        {currentView === 'usage' && 'Project guides and operational manuals'}
+                        {currentView === 'settings' && 'Manage preferences and data retention'}
+                        </p>
+                    </div>
+                    <div className="text-right hidden lg:block bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Current Session</div>
+                        <div className="text-sm font-medium text-gray-700">
+                            {new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                    </div>
+                </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column: Input Form */}
-              <div className="lg:col-span-1">
-                <div className="sticky top-8">
-                  <AnalysisInput 
-                    onAnalysisComplete={handleAnalysisComplete} 
-                    status={status}
-                    setStatus={setStatus}
-                  />
-                  
-                  <div className="mt-6 bg-blue-50 border border-blue-100 p-4 rounded-xl">
-                    <h4 className="text-blue-900 font-medium text-sm mb-2">How it works</h4>
-                    <p className="text-blue-800 text-xs leading-relaxed">
-                      Paste raw text from your RSS scraper or news feed. 
-                      The system uses Google Gemini to extract a structured JSON summary, 
-                      classify the topic, and calculate a sentiment score (-1.0 to 1.0).
-                    </p>
-                  </div>
-                </div>
-              </div>
+                {currentView === 'dashboard' && (
+                <>
+                    <DashboardStats articles={articles} />
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <div className="xl:col-span-1">
+                            <div className="sticky top-8">
+                                <AnalysisInput 
+                                    onAnalysisComplete={handleAnalysisComplete} 
+                                    status={status}
+                                    setStatus={setStatus}
+                                />
+                                <div className="mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-5 rounded-2xl">
+                                    <div className="flex gap-3 mb-2">
+                                        <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600 h-fit">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <h4 className="text-blue-900 font-bold text-sm pt-0.5">Quick Guide</h4>
+                                    </div>
+                                    <p className="text-blue-800 text-xs leading-relaxed opacity-80">
+                                        Input raw article text or use auto-fill for testing. The system utilizes Gemini to extract structured intelligence, sentiment scores, and risk factors.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
 
-              {/* Right Column: Feed */}
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Recent Analysis</h2>
-                  <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {articles.length} Items
-                  </span>
-                </div>
+                        <div className="xl:col-span-2 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold text-gray-800">Recent Feed</h2>
+                                <span className="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                                    {articles.length} Items Analyzed
+                                </span>
+                            </div>
 
-                {articles.length === 0 ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No articles analyzed yet</h3>
-                    <p className="mt-1 text-sm text-gray-500">Use the form on the left to process your first news article.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {articles.map((article) => (
-                      <ArticleCard key={article.article_id} article={article} />
-                    ))}
-                  </div>
+                            {articles.length === 0 ? (
+                                <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+                                    <div className="bg-gray-50 p-4 rounded-full mb-4">
+                                        <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-gray-900 font-medium mb-1">Feed is Empty</h3>
+                                    <p className="text-gray-500 text-sm max-w-xs mx-auto">Use the analysis panel to process your first article or event.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {articles.map((article) => (
+                                        <ArticleCard key={article.article_id} article={article} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
                 )}
-              </div>
+
+                {currentView === 'ecommerce' && <EcommerceView />}
+                {currentView === 'history' && <HistoryView articles={articles} />}
+                {currentView === 'datasources' && (
+                    <DataSourcesView 
+                        onArticlesFound={handleBatchAnalysisComplete}
+                        notify={showNotification}
+                        settings={settings}
+                        onAddAlert={handleAddAlert}
+                    />
+                )}
+                {currentView === 'settings' && (
+                    <SettingsView 
+                        articles={articles}
+                        onClearData={handleClearData} 
+                        onImportData={(data, mode) => {
+                            if (mode === 'replace') setArticles(data);
+                            else setArticles(prev => [...data, ...prev]);
+                        }}
+                        notify={showNotification}
+                        settings={settings}
+                        onUpdateSettings={setSettings}
+                    />
+                )}
+                {currentView === 'alerts' && <AlertsView alerts={alerts} />}
+                {currentView === 'usage' && <UsageGuideView />}
             </div>
-          </>
-        )}
-
-        {currentView === 'ecommerce' && (
-          <EcommerceView />
-        )}
-
-        {currentView === 'history' && (
-          <HistoryView articles={articles} />
-        )}
-
-        {currentView === 'datasources' && (
-          <DataSourcesView 
-            onArticlesFound={handleBatchAnalysisComplete}
-            notify={showNotification}
-            settings={settings}
-            onAddAlert={handleAddAlert}
-          />
-        )}
-        
-        {currentView === 'settings' && (
-          <SettingsView 
-            articles={articles}
-            onClearData={handleClearData} 
-            onImportData={(data, mode) => {
-              if (mode === 'replace') {
-                setArticles(data);
-              } else {
-                setArticles(prev => [...data, ...prev]);
-              }
-            }}
-            notify={showNotification}
-            settings={settings}
-            onUpdateSettings={setSettings}
-          />
-        )}
-
-        {currentView === 'alerts' && (
-          <AlertsView alerts={alerts} />
-        )}
-
-        {currentView === 'usage' && (
-          <UsageGuideView />
-        )}
-      </main>
+         </main>
+      </div>
     </div>
   );
 };

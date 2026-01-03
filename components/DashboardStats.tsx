@@ -9,11 +9,9 @@ interface DashboardStatsProps {
 const DashboardStats: React.FC<DashboardStatsProps> = ({ articles }) => {
   if (articles.length === 0) return null;
 
-  // Calculate Aggregates
   const totalArticles = articles.length;
   const avgSentiment = articles.reduce((acc, curr) => acc + curr.sentiment_score, 0) / totalArticles;
   
-  // Topic Distribution
   const topicCounts = articles.reduce((acc, curr) => {
     acc[curr.primary_topic] = (acc[curr.primary_topic] || 0) + 1;
     return acc;
@@ -21,7 +19,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ articles }) => {
 
   const topicData = Object.entries(topicCounts).map(([name, value]) => ({ name, value }));
 
-  // Sentiment Distribution (Bins)
   const sentimentBins = [
     { name: 'V. Neg', count: 0, fill: '#EF4444' },
     { name: 'Neg', count: 0, fill: '#F87171' },
@@ -39,62 +36,72 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ articles }) => {
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
       {/* Key Metrics Cards */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-        <h3 className="text-gray-500 text-sm font-medium uppercase">Total Articles</h3>
-        <p className="text-3xl font-bold text-gray-900 mt-1">{totalArticles}</p>
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden group">
+        <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <svg className="w-20 h-20 text-gray-900" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
+        </div>
+        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Articles</h3>
+        <p className="text-4xl font-black text-gray-900 mt-2">{totalArticles}</p>
       </div>
 
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-        <h3 className="text-gray-500 text-sm font-medium uppercase">Avg Sentiment</h3>
-        <p className={`text-3xl font-bold mt-1 ${avgSentiment >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden">
+        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Avg Sentiment</h3>
+        <p className={`text-4xl font-black mt-2 ${avgSentiment >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
           {avgSentiment > 0 ? '+' : ''}{avgSentiment.toFixed(2)}
         </p>
+        <div className={`text-xs font-bold mt-1 ${avgSentiment >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+            {avgSentiment >= 0.5 ? 'Very Positive' : avgSentiment >= 0 ? 'Positive' : 'Negative Trend'}
+        </div>
       </div>
 
       {/* Topic Chart */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm md:col-span-1 h-48">
-        <h3 className="text-gray-500 text-xs font-medium uppercase mb-2">Topic Distribution</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={topicData}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={60}
-              paddingAngle={5}
-              dataKey="value"
-            >
-              {topicData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={TOPIC_COLORS[entry.name as keyof typeof TOPIC_COLORS] || '#9CA3AF'} />
-              ))}
-            </Pie>
-            <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                itemStyle={{ fontSize: '12px' }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm md:col-span-1 h-60 flex flex-col">
+        <h3 className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">Topic Distribution</h3>
+        <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+                <Pie
+                data={topicData}
+                cx="50%"
+                cy="50%"
+                innerRadius={35}
+                outerRadius={55}
+                paddingAngle={5}
+                dataKey="value"
+                >
+                {topicData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={TOPIC_COLORS[entry.name as keyof typeof TOPIC_COLORS] || '#9CA3AF'} />
+                ))}
+                </Pie>
+                <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                />
+            </PieChart>
+            </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Sentiment Chart */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm md:col-span-1 h-48">
-        <h3 className="text-gray-500 text-xs font-medium uppercase mb-2">Sentiment Spread</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={sentimentBins}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB"/>
-            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-            <YAxis fontSize={10} axisLine={false} tickLine={false} allowDecimals={false}/>
-            <Tooltip cursor={{fill: '#F3F4F6'}} contentStyle={{ borderRadius: '8px' }}/>
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {sentimentBins.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm md:col-span-1 h-60 flex flex-col">
+        <h3 className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">Sentiment Spread</h3>
+        <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={sentimentBins}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6"/>
+                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontWeight: 600}} />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} width={20} tick={{fill: '#9CA3AF'}}/>
+                <Tooltip cursor={{fill: '#F9FAFB'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}/>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {sentimentBins.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+                </Bar>
+            </BarChart>
+            </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

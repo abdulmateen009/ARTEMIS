@@ -137,7 +137,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               value={settings.email}
               onChange={(e) => onUpdateSettings({...settings, email: e.target.value})}
               disabled={!settings.emailEnabled}
-              className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border disabled:bg-gray-50 disabled:text-gray-400"
+              className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border disabled:bg-gray-50 disabled:text-gray-400 text-gray-900 placeholder-gray-400"
             />
           </div>
         </div>

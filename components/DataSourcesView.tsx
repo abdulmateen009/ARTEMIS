@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DataSource, ArticleAnalysis, AppSettings, AlertEntry, SENTIMENT_COLORS } from '../types';
+import { DataSource, ArticleAnalysis, AppSettings, AlertEntry } from '../types';
 import { generateSocialScrapeBatch, analyzeArticle, generateAlertEmail, generateScanReport } from '../services/geminiService';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import ArticleCard from './ArticleCard';
@@ -49,35 +49,25 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
 
   const handleScan = async () => {
     setIsScanning(true);
-    setLastScanData(null); // Reset previous results
+    setLastScanData(null);
     if(notify) notify("Initiating social media & news scrape sequence...", 'info');
     
     try {
-      // 1. Simulate scraping diverse content from the configured platforms
       const rawPosts = await generateSocialScrapeBatch(3, 'News Papers, Magazines, and Social Media');
-      
-      // 2. Analyze each post
       const analyzedResults: ArticleAnalysis[] = [];
       let alertCount = 0;
 
       for (const post of rawPosts) {
         const analysis = await analyzeArticle(post);
         analyzedResults.push(analysis);
-
-        // TRIGGER CONDITION:
-        // Alert if Risk Category is detected OR if Sentiment is Negative/Very Negative
         const isNegativeSentiment = ['Negative', 'Very Negative'].includes(analysis.sentiment_label);
         const isHighRisk = analysis.risk_category !== 'None' && analysis.risk_category !== undefined;
 
         if (isHighRisk || isNegativeSentiment) {
           alertCount++;
-          
           if (settings.emailEnabled) {
               try {
-                  // Generate context-aware email body
                   const emailContent = await generateAlertEmail(analysis, settings.email);
-                  
-                  // Log the automated alert
                   onAddAlert({
                       id: Date.now().toString() + Math.random(),
                       timestamp: new Date().toISOString(),
@@ -95,24 +85,14 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
         }
       }
 
-      // 3. Generate Scan Report
       const report = await generateScanReport(analyzedResults);
-      setLastScanData({
-          articles: analyzedResults,
-          summary: report
-      });
+      setLastScanData({ articles: analyzedResults, summary: report });
 
-      // 4. Update main app state
-      if (onArticlesFound) {
-        onArticlesFound(analyzedResults);
-      }
+      if (onArticlesFound) onArticlesFound(analyzedResults);
 
       if (notify) {
-        if (alertCount > 0) {
-            notify(`SCAN COMPLETE: ${alertCount} Alerts Sent (Negative Sentiment/Risk Detected)`, 'error');
-        } else {
-            notify(`Scan complete. ${analyzedResults.length} items processed.`, 'success');
-        }
+        if (alertCount > 0) notify(`SCAN COMPLETE: ${alertCount} Alerts Sent`, 'error');
+        else notify(`Scan complete. ${analyzedResults.length} items processed.`, 'success');
       }
 
     } catch (error) {
@@ -123,12 +103,9 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
     }
   };
 
-  // Helper for charts
   const getRiskChartData = (articles: ArticleAnalysis[]) => {
       const counts: Record<string, number> = {};
-      articles.forEach(a => {
-          counts[a.risk_category] = (counts[a.risk_category] || 0) + 1;
-      });
+      articles.forEach(a => { counts[a.risk_category] = (counts[a.risk_category] || 0) + 1; });
       return Object.entries(counts).map(([name, value]) => ({ name, value }));
   };
 
@@ -145,25 +122,31 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
     <div className="space-y-6">
       
       {/* Scanner Control */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 text-white">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h2 className="text-xl font-bold text-white mb-1">Active Network Scanner</h2>
-                <h3 className="text-emerald-400 font-semibold text-sm mb-0.5">AI News Intelligence & Sentiment Radar</h3>
-                <p className="text-slate-400 text-xs italic mb-3">Transforming Real-Time Media Noise into Actionable Business Strategy</p>
-                <p className="text-slate-300 text-sm">
-                    Actively scanning configured Newspapers, Magazines, and Social channels.
-                    {settings.emailEnabled && (
-                        <span className="block mt-1 text-emerald-400 text-xs font-semibold">
-                            ✓ Auto-Alerts Enabled: Triggering on Negative Sentiment to {settings.email}
-                        </span>
-                    )}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl shadow-lg border border-slate-700 p-6 md:p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="max-w-xl">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Active Network Scanner</h2>
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                    Autonomous agent scanning configured Newspapers, Magazines, and Social channels for sentiment anomalies and high-risk content.
                 </p>
+                {settings.emailEnabled && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        Auto-Alerts Enabled
+                    </div>
+                )}
             </div>
             <button 
                 onClick={handleScan}
                 disabled={isScanning}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white shadow-lg transition-all ${
+                className={`w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-white shadow-xl transition-all active:scale-95 ${
                     isScanning 
                     ? 'bg-slate-600 cursor-wait' 
                     : 'bg-red-600 hover:bg-red-700 hover:shadow-red-900/50'
@@ -171,108 +154,92 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
             >
                 {isScanning ? (
                     <>
-                         <svg className="animate-spin -ml-1 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Scanning Networks...
+                         <svg className="animate-spin -ml-1 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Scanning...
                     </>
                 ) : (
                     <>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        Scan & Analyze Now
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        Start Scan
                     </>
                 )}
             </button>
         </div>
       </div>
 
-      {/* Visual Feedback Section - Only shows after scan */}
+      {/* Visual Feedback Section */}
       {lastScanData && (
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-inner animate-fade-in-down">
-              <div className="flex items-center gap-3 mb-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner animate-fade-in-down">
+              <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-4">
                   <div className="bg-blue-100 p-2 rounded-lg">
-                      <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
+                      <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-800">Live Scan Results & Analysis</h3>
-                    <p className="text-xs text-gray-500">Processing timestamp: {new Date().toLocaleTimeString()}</p>
+                    <h3 className="text-lg font-bold text-gray-800">Scan Analysis Report</h3>
+                    <p className="text-xs text-gray-500">Processed at {new Date().toLocaleTimeString()}</p>
                   </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Summary Column */}
                   <div className="lg:col-span-1 space-y-4">
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                          <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Executive Summary</h4>
-                          <p className="text-sm text-gray-700 leading-relaxed font-medium">
-                              {lastScanData.summary}
-                          </p>
+                      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Executive Summary</h4>
+                          <p className="text-sm text-gray-700 leading-relaxed font-medium">{lastScanData.summary}</p>
                       </div>
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm grid grid-cols-2 gap-4">
-                           <div>
-                               <p className="text-xs text-gray-400 uppercase">Items Scanned</p>
-                               <p className="text-2xl font-bold text-gray-800">{lastScanData.articles.length}</p>
+                      <div className="grid grid-cols-2 gap-4">
+                           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm text-center">
+                               <p className="text-xs text-gray-400 uppercase font-bold mb-1">Scanned</p>
+                               <p className="text-2xl font-black text-gray-800">{lastScanData.articles.length}</p>
                            </div>
-                           <div>
-                               <p className="text-xs text-gray-400 uppercase">Threats Found</p>
-                               <p className={`text-2xl font-bold ${lastScanData.articles.filter(a => a.risk_category !== 'None').length > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm text-center">
+                               <p className="text-xs text-gray-400 uppercase font-bold mb-1">Threats</p>
+                               <p className={`text-2xl font-black ${lastScanData.articles.filter(a => a.risk_category !== 'None').length > 0 ? 'text-red-600' : 'text-emerald-500'}`}>
                                    {lastScanData.articles.filter(a => a.risk_category !== 'None').length}
                                </p>
                            </div>
                       </div>
                   </div>
 
-                  {/* Charts Column */}
                   <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm h-64">
-                          <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2 text-center">Detected Risks</h4>
-                          <ResponsiveContainer width="100%" height="90%">
-                              <PieChart>
-                                  <Pie
-                                      data={getRiskChartData(lastScanData.articles)}
-                                      cx="50%"
-                                      cy="50%"
-                                      innerRadius={40}
-                                      outerRadius={60}
-                                      paddingAngle={5}
-                                      dataKey="value"
-                                  >
-                                      {getRiskChartData(lastScanData.articles).map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={RISK_COLORS[entry.name] || '#9CA3AF'} />
-                                      ))}
-                                  </Pie>
-                                  <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}} />
-                              </PieChart>
-                          </ResponsiveContainer>
+                      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-64 flex flex-col">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 text-center">Risk Distribution</h4>
+                          <div className="flex-1">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={getRiskChartData(lastScanData.articles)} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
+                                        {getRiskChartData(lastScanData.articles).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={RISK_COLORS[entry.name] || '#9CA3AF'} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                          </div>
                       </div>
-                      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm h-64">
-                           <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2 text-center">Sentiment Distribution</h4>
-                           <ResponsiveContainer width="100%" height="90%">
-                               <BarChart data={lastScanData.articles.map(a => ({ name: a.source.slice(0,10), score: a.sentiment_score }))}>
-                                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                   <XAxis dataKey="name" fontSize={10} hide />
-                                   <YAxis domain={[-1, 1]} fontSize={10} />
-                                   <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}} />
-                                   <Bar dataKey="score" fill="#3B82F6" radius={[4, 4, 0, 0]}>
-                                      {lastScanData.articles.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={entry.sentiment_score >= 0 ? '#10B981' : '#EF4444'} />
-                                      ))}
-                                   </Bar>
-                               </BarChart>
-                           </ResponsiveContainer>
+                      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-64 flex flex-col">
+                           <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 text-center">Sentiment Spectrum</h4>
+                           <div className="flex-1">
+                             <ResponsiveContainer width="100%" height="100%">
+                                 <BarChart data={lastScanData.articles.map(a => ({ name: a.source.slice(0,10), score: a.sentiment_score }))}>
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                     <XAxis dataKey="name" fontSize={10} hide />
+                                     <YAxis domain={[-1, 1]} fontSize={10} />
+                                     <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}} />
+                                     <Bar dataKey="score" fill="#3B82F6" radius={[4, 4, 0, 0]}>
+                                        {lastScanData.articles.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.sentiment_score >= 0 ? '#10B981' : '#EF4444'} />
+                                        ))}
+                                     </Bar>
+                                 </BarChart>
+                             </ResponsiveContainer>
+                           </div>
                       </div>
                   </div>
               </div>
               
-              {/* Flagged Items List */}
               {lastScanData.articles.some(a => a.risk_category !== 'None') && (
-                  <div className="mt-6">
-                      <h4 className="text-sm font-bold text-red-700 uppercase mb-3 flex items-center gap-2">
+                  <div className="mt-8">
+                      <h4 className="text-sm font-bold text-red-700 uppercase mb-4 flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
                           Flagged High-Risk Content
                       </h4>
@@ -287,41 +254,48 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
       )}
 
       {/* Add New Source */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Monitor New Target</h2>
-        <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-4 items-end">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-6">Monitor New Target</h2>
+        <form onSubmit={handleAdd} className="flex flex-col xl:flex-row gap-5 items-start xl:items-end">
           <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Page/Channel/News/Magazine</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Source Name</label>
             <input 
               type="text" 
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+              className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-3 border transition-all text-gray-900 placeholder-gray-400 caret-blue-600"
               placeholder="e.g. Public Opinion Group"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               required
             />
           </div>
-          <div className="w-full md:w-40">
-             <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
-             <select 
-                value={newPlatform}
-                onChange={e => setNewPlatform(e.target.value as any)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-             >
-                <option value="News Paper">News Paper</option>
-                <option value="Magazine">Magazine</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Instagram">Instagram</option>
-                <option value="X (Twitter)">X (Twitter)</option>
-                <option value="TikTok">TikTok</option>
-                <option value="RSS">RSS Feed</option>
-             </select>
+          <div className="w-full xl:w-56">
+             <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Platform</label>
+             <div className="relative">
+                 <select 
+                    value={newPlatform}
+                    onChange={e => setNewPlatform(e.target.value as any)}
+                    className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-3 border transition-all text-gray-900 appearance-none pr-8 cursor-pointer"
+                 >
+                    <option value="News Paper">News Paper</option>
+                    <option value="Magazine">Magazine</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="X (Twitter)">X (Twitter)</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="RSS">RSS Feed</option>
+                 </select>
+                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                 </div>
+             </div>
           </div>
           <div className="flex-[2] w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Target URL / ID</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Target URL / ID</label>
             <input 
               type="text" 
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+              className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-3 border transition-all text-gray-900 placeholder-gray-400 caret-blue-600"
               placeholder="https://..."
               value={newUrl}
               onChange={e => setNewUrl(e.target.value)}
@@ -330,17 +304,17 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
           </div>
           <button 
             type="submit"
-            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
+            className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95 h-[46px]"
           >
             Add Target
           </button>
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Monitored Channels & Links</h2>
-          <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-lg font-bold text-gray-800">Monitored Channels</h2>
+          <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">
             {sources.length} Configured
           </span>
         </div>
@@ -348,52 +322,44 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target URL</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Scraped</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Platform</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Target</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Last Check</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sources.map((source) => (
-                <tr key={source.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{source.name}</td>
+                <tr key={source.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{source.name}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                            source.platform === 'Facebook' ? 'bg-blue-100 text-blue-800' :
                            source.platform === 'X (Twitter)' ? 'bg-gray-100 text-gray-800' :
                            source.platform === 'TikTok' ? 'bg-pink-100 text-pink-800' :
-                           source.platform === 'News Paper' ? 'bg-indigo-100 text-indigo-800' :
-                           source.platform === 'Magazine' ? 'bg-teal-100 text-teal-800' :
                            'bg-purple-100 text-purple-800'
                        }`}>
                            {source.platform}
                        </span>
                    </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={source.url}>{source.url}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{source.url}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      source.status === 'active' ? 'bg-green-100 text-green-800' : 
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      source.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 
                       source.status === 'error' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
                     }`}>
+                      {source.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
                       {source.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{source.lastScraped}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => handleDelete(source.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <button onClick={() => handleDelete(source.id)} className="text-red-600 hover:text-red-900 font-semibold text-xs border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
                   </td>
                 </tr>
               ))}
-              {sources.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No monitoring targets configured. Add one above.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
