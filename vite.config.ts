@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => {
     define: {
       // CRITICAL: This allows the app to access process.env.API_KEY in the browser
       // It replaces the string 'process.env.API_KEY' with the actual value during build
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // We default to empty string to prevent syntax errors if env.API_KEY is missing
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || ""),
     },
     build: {
       // Fixes the "Adjust chunk size limit" warning

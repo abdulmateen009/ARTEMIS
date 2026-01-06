@@ -2,8 +2,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisRequest, ArticleAnalysis, RiskCategory, EcommerceData } from "../types";
 import { supabase } from "./supabaseClient";
 
-// Initialize the API client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy Initialization Wrapper
+let aiInstance: GoogleGenAI | null = null;
+
+const getAiClient = (): GoogleGenAI => {
+  if (aiInstance) return aiInstance;
+
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    console.error("CRITICAL: API_KEY is missing. Please add it to Vercel Environment Variables.");
+    // We throw here so it's caught by the try-catch blocks in the functions below,
+    // rather than crashing the entire app on load.
+    throw new Error("API Key is missing. Please check your settings.");
+  }
+
+  aiInstance = new GoogleGenAI({ apiKey: apiKey });
+  return aiInstance;
+};
 
 const SYSTEM_INSTRUCTION = `
 You are ARTEMIS (AI Real-Time Event Monitoring & Intelligence System), a specialized Sentinel for Social Harmony and Public Safety. 
@@ -28,6 +43,7 @@ Strictly generate only a single JSON object.
 
 export const analyzeArticle = async (request: AnalysisRequest, useThinkingMode: boolean = false): Promise<ArticleAnalysis> => {
   try {
+    const ai = getAiClient();
     const prompt = `
       Raw Content / Caption: ${request.text} 
       Platform/Source: ${request.source} 
@@ -171,6 +187,7 @@ export const analyzeArticle = async (request: AnalysisRequest, useThinkingMode: 
 
 export const generateAlertEmail = async (article: ArticleAnalysis, recipientEmail: string): Promise<{subject: string, body: string}> => {
   try {
+    const ai = getAiClient();
     const prompt = `
       You are ARTEMIS, an automated intelligence security officer.
       
@@ -238,6 +255,7 @@ export const generateScanReport = async (articles: ArticleAnalysis[]): Promise<s
   `;
   
    try {
+     const ai = getAiClient();
      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
@@ -255,6 +273,7 @@ export const generateMockArticle = async (platform: string): Promise<AnalysisReq
 // Simulates scraping a batch of social media posts based on high-risk keywords
 export const generateSocialScrapeBatch = async (count: number = 3, platform: string = 'Mixed Sources'): Promise<AnalysisRequest[]> => {
   try {
+    const ai = getAiClient();
     const prompt = `
       Task: Simulate scraping raw text from social media posts on ${platform}.
       Generate ${count} distinct, realistic posts.
@@ -332,6 +351,7 @@ export const generateSocialScrapeBatch = async (count: number = 3, platform: str
 
 export const getEcommerceInsights = async (): Promise<EcommerceData> => {
   try {
+    const ai = getAiClient();
     const prompt = `
       Act as an expert Global E-Commerce Market Analyst.
       
