@@ -78,7 +78,7 @@ const EcommerceView: React.FC = () => {
            <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">Purchase Volume by Platform</h3>
            <div className="h-64">
              <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={data.platforms} layout="vertical" margin={{ left: 10 }}>
+               <BarChart data={data.platforms as any[]} layout="vertical" margin={{ left: 10 }}>
                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                  <XAxis type="number" fontSize={12} tickFormatter={(val) => `${val/1000}k`} />
                  <YAxis dataKey="platform" type="category" fontSize={12} width={130} />
@@ -95,7 +95,7 @@ const EcommerceView: React.FC = () => {
              <ResponsiveContainer width="100%" height="100%">
                <PieChart>
                  <Pie
-                    data={data.platforms}
+                    data={data.platforms as any[]}
                     dataKey="customer_satisfaction"
                     nameKey="platform"
                     cx="50%"

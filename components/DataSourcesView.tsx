@@ -5,22 +5,24 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis
 import ArticleCard from './ArticleCard';
 
 interface DataSourcesViewProps {
+  sources: DataSource[];
+  onAddSource: (source: DataSource) => void;
+  onDeleteSource: (id: string) => void;
   onArticlesFound?: (articles: ArticleAnalysis[]) => void;
   notify?: (message: string, type: 'success' | 'error' | 'info') => void;
   settings: AppSettings;
   onAddAlert: (alert: AlertEntry) => void;
 }
 
-const MOCK_SOURCES: DataSource[] = [
-  { id: '1', name: 'Public News RSS', platform: 'RSS', url: 'https://news.google.com/rss', status: 'active', lastScraped: '10 mins ago' },
-  { id: '2', name: 'The Daily Times', platform: 'News Paper', url: 'https://dailytimes.example.com', status: 'active', lastScraped: '5 mins ago' },
-  { id: '3', name: 'Tech Weekly', platform: 'Magazine', url: 'https://techweekly.example.com', status: 'active', lastScraped: '1 hour ago' },
-  { id: '4', name: 'Monitoring Page: Religious Debates', platform: 'Facebook', url: 'https://facebook.com/groups/debates', status: 'active', lastScraped: '1 hour ago' },
-  { id: '5', name: 'Hashtag: #PublicOpinion', platform: 'X (Twitter)', url: 'https://x.com/search?q=public', status: 'active', lastScraped: '25 mins ago' },
-];
-
-const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, notify, settings, onAddAlert }) => {
-  const [sources, setSources] = useState<DataSource[]>(MOCK_SOURCES);
+const DataSourcesView: React.FC<DataSourcesViewProps> = ({ 
+    sources, 
+    onAddSource, 
+    onDeleteSource, 
+    onArticlesFound, 
+    notify, 
+    settings, 
+    onAddAlert 
+}) => {
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newPlatform, setNewPlatform] = useState<DataSource['platform']>('News Paper');
@@ -38,13 +40,9 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
       status: 'active',
       lastScraped: 'Pending...'
     };
-    setSources([...sources, newSource]);
+    onAddSource(newSource);
     setNewName('');
     setNewUrl('');
-  };
-
-  const handleDelete = (id: string) => {
-    setSources(sources.filter(s => s.id !== id));
   };
 
   const handleScan = async () => {
@@ -356,7 +354,7 @@ const DataSourcesView: React.FC<DataSourcesViewProps> = ({ onArticlesFound, noti
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{source.lastScraped}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => handleDelete(source.id)} className="text-red-600 hover:text-red-900 font-semibold text-xs border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                    <button onClick={() => onDeleteSource(source.id)} className="text-red-600 hover:text-red-900 font-semibold text-xs border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
                   </td>
                 </tr>
               ))}

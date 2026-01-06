@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArticleAnalysis, AppSettings } from '../types';
 
 interface SettingsViewProps {
@@ -19,6 +19,41 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateSettings
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Admin Security State
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleAdminToggle = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+    } else {
+      setShowAuthScreen(true);
+      setPassword('');
+      setAuthError('');
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'admin009') {
+      setIsAdmin(true);
+      setShowAuthScreen(false);
+      setAuthError('');
+    } else {
+      setAuthError('Access Denied: Invalid Security Credentials');
+      setPassword('');
+    }
+  };
+
+  const handleCancelAuth = () => {
+    setShowAuthScreen(false);
+    setPassword('');
+    setAuthError('');
+  };
 
   const handleExport = () => {
     if (articles.length === 0) {
@@ -70,16 +105,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     event.target.value = ''; // Reset
   };
 
-  const handleClear = () => {
+  const handleClearRequest = () => {
     if (articles.length === 0) {
         notify('No data to clear.', 'info');
         return;
     }
-    
-    if (window.confirm('⚠️ WARNING: Are you sure you want to clear all analysis history?\n\nThis action cannot be undone and will permanently delete all local data.')) {
-        onClearData();
-        notify('All analysis history has been permanently deleted.', 'success');
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClear = () => {
+      onClearData();
+      notify('All analysis history has been permanently deleted.', 'success');
+      setShowClearConfirm(false);
   };
 
   const sensitivityOptions = [
@@ -107,12 +144,130 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   ];
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl space-y-8 relative">
+      
+      {/* CLEAR DATA CONFIRMATION MODAL */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowClearConfirm(false)}></div>
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden animate-fade-in-up">
+            <div className="p-6 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Clear All History?</h3>
+              <p className="text-sm text-gray-500 mt-2">
+                Are you sure you want to delete all <span className="font-bold">{articles.length}</span> analyzed articles? This action <span className="font-bold text-red-600">cannot be undone</span>.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+              <button
+                type="button"
+                onClick={confirmClear}
+                className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-bold text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Yes, Clear Everything
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Security Gateway Overlay */}
+      {showAuthScreen && (
+         <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4 animate-fade-in-down">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-slate-50 border-b border-gray-200 p-6 flex flex-col items-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">Security Clearance Required</h3>
+                    <p className="text-sm text-gray-500 text-center mt-2">
+                       This section is restricted to authorized personnel only. Please verify your identity.
+                    </p>
+                </div>
+                
+                <form onSubmit={handleLogin} className="p-8 space-y-6">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Admin Password</label>
+                        <input 
+                          type="password" 
+                          autoFocus
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white"
+                          placeholder="••••••••"
+                        />
+                        {authError && (
+                            <p className="text-red-600 text-xs font-bold mt-2 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {authError}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button 
+                           type="button" 
+                           onClick={handleCancelAuth}
+                           className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-600 font-bold hover:bg-gray-50 text-sm transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                           type="submit" 
+                           className="flex-[2] px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-200 transition-transform active:scale-95"
+                        >
+                            Authenticate Access
+                        </button>
+                    </div>
+                    
+                    <div className="text-center">
+                        <p className="text-[10px] text-gray-400">Demo Access: Use password <span className="font-mono bg-gray-100 px-1 rounded">admin009</span></p>
+                    </div>
+                </form>
+            </div>
+         </div>
+       )}
+
       {/* Notifications Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Notification Preferences</h2>
-          <p className="text-sm text-gray-500">Manage how and when you receive alerts.</p>
+        <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Notification Preferences</h2>
+            <p className="text-sm text-gray-500">Manage how and when you receive alerts.</p>
+          </div>
+
+           {/* Admin Toggle */}
+             <div 
+               onClick={handleAdminToggle}
+               className={`flex items-center cursor-pointer select-none px-4 py-2 rounded-lg border transition-all duration-200 group ${isAdmin ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+             >
+                <div className={`mr-3 font-bold text-xs uppercase tracking-wider transition-colors ${isAdmin ? 'text-red-700' : 'text-gray-500'}`}>
+                  {isAdmin ? 'Admin Access: UNLOCKED' : 'Admin Access: LOCKED'}
+                </div>
+                <div className="relative h-6 w-10">
+                  <div className={`block w-10 h-6 rounded-full transition-colors duration-200 ${isAdmin ? 'bg-red-600' : 'bg-gray-300'}`}></div>
+                  <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 flex items-center justify-center ${isAdmin ? 'transform translate-x-4' : ''}`}>
+                      {isAdmin ? (
+                          <svg className="w-2.5 h-2.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      ) : (
+                          <svg className="w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      )}
+                  </div>
+                </div>
+             </div>
         </div>
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -137,7 +292,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               value={settings.email}
               onChange={(e) => onUpdateSettings({...settings, email: e.target.value})}
               disabled={!settings.emailEnabled}
-              className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border disabled:bg-gray-50 disabled:text-gray-400 text-gray-900 placeholder-gray-400"
+              className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white disabled:bg-gray-100 disabled:text-gray-400 disabled:caret-gray-500 transition-colors"
             />
           </div>
         </div>
@@ -242,7 +397,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               <p className="text-sm text-red-500">Permanently remove all {articles.length} analyzed articles from the dashboard.</p>
             </div>
             <button 
-              onClick={handleClear}
+              onClick={handleClearRequest}
               className="inline-flex justify-center rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
             >
                <svg className="-ml-1 mr-2 h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

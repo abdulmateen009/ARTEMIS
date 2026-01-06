@@ -3,6 +3,7 @@ import { AlertEntry } from '../types';
 
 interface AlertsViewProps {
   alerts: AlertEntry[];
+  onDeleteAlert: (id: string) => void;
 }
 
 interface EmailConfig {
@@ -12,11 +13,13 @@ interface EmailConfig {
   isActive: boolean;
 }
 
-const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
+const AlertsView: React.FC<AlertsViewProps> = ({ alerts, onDeleteAlert }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [selectedAlert, setSelectedAlert] = useState<AlertEntry | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   
   const [emailConfigs, setEmailConfigs] = useState<EmailConfig[]>([
     { id: '1', role: 'Chief Security Officer', email: 'cso@artemis.corp', isActive: true },
@@ -28,10 +31,8 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
 
   const handleAdminToggle = () => {
     if (isAdmin) {
-      // If already admin, we can lock it immediately
       setIsAdmin(false);
     } else {
-      // If trying to unlock, show auth screen
       setShowAuthScreen(true);
       setPassword('');
       setAuthError('');
@@ -40,7 +41,6 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo credential check
     if (password === 'admin009') {
       setIsAdmin(true);
       setShowAuthScreen(false);
@@ -58,8 +58,6 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
   };
 
   const handleToggleEmail = (id: string) => {
-    if (!isAdmin) return; 
-    
     setEmailConfigs(prev => prev.map(config => 
       config.id === id ? { ...config, isActive: !config.isActive } : config
     ));
@@ -71,15 +69,114 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
     ));
   };
 
-  const handleOpenMail = (alert: AlertEntry) => {
-      const subject = encodeURIComponent(alert.subject);
-      const body = encodeURIComponent(alert.body);
-      window.open(`mailto:${alert.recipient}?subject=${subject}&body=${body}`, '_blank');
+  const handleViewDetails = (alert: AlertEntry) => {
+      setSelectedAlert(alert);
+  };
+
+  const handleCloseModal = () => {
+      setSelectedAlert(null);
+  };
+
+  const confirmDeleteAlert = () => {
+      if (deleteConfirmation) {
+          onDeleteAlert(deleteConfirmation);
+          setDeleteConfirmation(null);
+      }
   };
 
   return (
     <div className="space-y-8 relative">
        
+       {/* Delete Confirmation Modal */}
+       {deleteConfirmation && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setDeleteConfirmation(null)}></div>
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden animate-fade-in-up">
+            <div className="p-6 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete Alert Log?</h3>
+              <p className="text-sm text-gray-500 mt-2">
+                This will permanently remove this alert from the system history.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+              <button
+                type="button"
+                onClick={confirmDeleteAlert}
+                className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-bold text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Delete Log
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation(null)}
+                className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+       )}
+
+       {/* Alert Details Modal */}
+       {selectedAlert && (
+         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={handleCloseModal}></div>
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-up">
+              <div className="bg-slate-900 px-6 py-4 flex justify-between items-center shrink-0">
+                  <h3 className="text-lg font-bold text-white">Security Alert Details</h3>
+                  <button onClick={handleCloseModal} className="text-gray-400 hover:text-white transition-colors">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-6">
+                 <div className="grid grid-cols-2 gap-4">
+                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                         <span className="text-xs text-gray-500 uppercase font-bold">Risk Level</span>
+                         <p className="font-bold text-red-700">{selectedAlert.riskLevel}</p>
+                     </div>
+                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                         <span className="text-xs text-gray-500 uppercase font-bold">Source</span>
+                         <p className="font-bold text-gray-900">{selectedAlert.source}</p>
+                     </div>
+                 </div>
+                 
+                 <div>
+                     <span className="text-xs text-gray-500 uppercase font-bold block mb-1">Subject Line</span>
+                     <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-800">
+                         {selectedAlert.subject}
+                     </div>
+                 </div>
+
+                 <div>
+                     <span className="text-xs text-gray-500 uppercase font-bold block mb-1">Email Body Content</span>
+                     <div className="p-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-sm h-64 overflow-y-auto">
+                         {selectedAlert.body}
+                     </div>
+                 </div>
+
+                 <div className="pt-2 text-xs text-gray-400 flex justify-between">
+                     <span>Recipient: {selectedAlert.recipient}</span>
+                     <span>Timestamp: {new Date(selectedAlert.timestamp).toLocaleString()}</span>
+                 </div>
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                  <button 
+                    onClick={handleCloseModal} 
+                    className="px-5 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    Close
+                  </button>
+              </div>
+           </div>
+         </div>
+       )}
+
        {/* Security Gateway Overlay */}
        {showAuthScreen && (
          <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4 animate-fade-in-down">
@@ -181,19 +278,13 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                           <h4 className={`text-sm font-bold ${config.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
                               {config.role}
                           </h4>
-                          {isAdmin ? (
-                            <input 
-                                type="email"
-                                value={config.email}
-                                onChange={(e) => handleEmailChange(config.id, e.target.value)}
-                                className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition-colors"
-                                placeholder="Enter email address"
-                            />
-                          ) : (
-                            <p className={`text-xs ${config.isActive ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {config.email}
-                            </p>
-                          )}
+                          <input 
+                              type="email"
+                              value={config.email}
+                              onChange={(e) => handleEmailChange(config.id, e.target.value)}
+                              className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition-colors"
+                              placeholder="Enter email address"
+                          />
                       </div>
                    </div>
 
@@ -201,14 +292,12 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                    <div className="flex items-center ml-4">
                       <button
                          onClick={() => handleToggleEmail(config.id)}
-                         disabled={!isAdmin}
                          className={`
                             px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all shadow-sm
                             ${config.isActive 
                                 ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
                                 : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                             }
-                            ${!isAdmin && 'opacity-60 cursor-not-allowed'}
                          `}
                       >
                          {config.isActive ? 'Active' : 'Not Active'}
@@ -217,17 +306,6 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                 </div>
              ))}
           </div>
-          
-          {!isAdmin && (
-              <div className="bg-gray-50 p-2 text-center text-xs text-gray-400 border-t border-gray-100">
-                  <span className="flex items-center justify-center gap-1">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      Enable Admin Access to modify distribution settings
-                  </span>
-              </div>
-          )}
        </div>
 
        {/* 2. Existing Log Section */}
@@ -263,6 +341,7 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk / Source</th>
                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated Content</th>
                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                            </tr>
                        </thead>
                        <tbody className="bg-white divide-y divide-gray-200">
@@ -284,12 +363,13 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                                    <td className="px-4 py-3">
                                        <p className="text-sm font-medium text-gray-900 truncate max-w-xs">{alert.subject}</p>
                                        <button 
-                                          onClick={() => handleOpenMail(alert)}
-                                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center gap-1"
+                                          onClick={() => handleViewDetails(alert)}
+                                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center gap-1 font-semibold"
                                        >
-                                           View Email Body
+                                           View Full Email
                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                            </svg>
                                        </button>
                                    </td>
@@ -300,6 +380,18 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts }) => {
                                            </svg>
                                            {alert.status}
                                        </span>
+                                   </td>
+                                   <td className="px-4 py-3 text-right whitespace-nowrap">
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeleteConfirmation(alert.id);
+                                            }}
+                                            className="text-red-600 hover:text-red-800 text-xs font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-red-200 transition-all"
+                                        >
+                                            Delete
+                                        </button>
                                    </td>
                                </tr>
                            ))}

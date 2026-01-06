@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArticleAnalysis, ProcessingStatus, AppSettings, AlertEntry } from './types';
+import { ArticleAnalysis, ProcessingStatus, AppSettings, AlertEntry, DataSource, DocumentationFile } from './types';
 import AnalysisInput from './components/AnalysisInput';
 import ArticleCard from './components/ArticleCard';
 import DashboardStats from './components/DashboardStats';
@@ -48,6 +48,14 @@ create policy "Enable insert access for all users"
 on public.news_sentiment_table for insert to public with check (true);
 `;
 
+const INITIAL_SOURCES: DataSource[] = [
+  { id: '1', name: 'Public News RSS', platform: 'RSS', url: 'https://news.google.com/rss', status: 'active', lastScraped: '10 mins ago' },
+  { id: '2', name: 'The Daily Times', platform: 'News Paper', url: 'https://dailytimes.example.com', status: 'active', lastScraped: '5 mins ago' },
+  { id: '3', name: 'Tech Weekly', platform: 'Magazine', url: 'https://techweekly.example.com', status: 'active', lastScraped: '1 hour ago' },
+  { id: '4', name: 'Monitoring Page: Religious Debates', platform: 'Facebook', url: 'https://facebook.com/groups/debates', status: 'active', lastScraped: '1 hour ago' },
+  { id: '5', name: 'Hashtag: #PublicOpinion', platform: 'X (Twitter)', url: 'https://x.com/search?q=public', status: 'active', lastScraped: '25 mins ago' },
+];
+
 const App: React.FC = () => {
   const [articles, setArticles] = useState<ArticleAnalysis[]>([]);
   const [status, setStatus] = useState<ProcessingStatus>(ProcessingStatus.IDLE);
@@ -57,13 +65,42 @@ const App: React.FC = () => {
   const [showSqlSetup, setShowSqlSetup] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // App-wide settings and alerts state
-  const [settings, setSettings] = useState<AppSettings>({
+  // -- PERSISTENT STATE MANAGEMENT --
+  
+  // Settings
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('artemis_settings');
+    return saved ? JSON.parse(saved) : {
       email: 'analyst@company.com',
       emailEnabled: true,
       sensitivity: 'medium'
+    };
   });
-  const [alerts, setAlerts] = useState<AlertEntry[]>([]);
+
+  // Alerts
+  const [alerts, setAlerts] = useState<AlertEntry[]>(() => {
+    const saved = localStorage.getItem('artemis_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Data Sources
+  const [dataSources, setDataSources] = useState<DataSource[]>(() => {
+    const saved = localStorage.getItem('artemis_dataSources');
+    return saved ? JSON.parse(saved) : INITIAL_SOURCES;
+  });
+
+  // Documents
+  const [docs, setDocs] = useState<DocumentationFile[]>(() => {
+    const saved = localStorage.getItem('artemis_docs');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // -- PERSISTENCE EFFECTS --
+  useEffect(() => { localStorage.setItem('artemis_settings', JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { localStorage.setItem('artemis_alerts', JSON.stringify(alerts)); }, [alerts]);
+  useEffect(() => { localStorage.setItem('artemis_dataSources', JSON.stringify(dataSources)); }, [dataSources]);
+  useEffect(() => { localStorage.setItem('artemis_docs', JSON.stringify(docs)); }, [docs]);
+
 
   // Load data from Supabase on initial mount
   useEffect(() => {
@@ -128,11 +165,41 @@ const App: React.FC = () => {
 
   const handleClearData = () => {
     setArticles([]);
-    setAlerts([]);
+    setAlerts([]); // This will also clear local storage via the effect
+    showNotification('System cache and history cleared', 'info');
   };
   
+  // --- ALERT MANAGEMENT ---
   const handleAddAlert = (alert: AlertEntry) => {
       setAlerts(prev => [alert, ...prev]);
+  };
+
+  const handleDeleteAlert = (id: string) => {
+    setAlerts(prev => prev.filter(a => a.id !== id));
+    showNotification('Alert log deleted successfully', 'info');
+  };
+
+  // --- DATA SOURCE MANAGEMENT ---
+  const handleAddSource = (source: DataSource) => {
+    setDataSources(prev => [...prev, source]);
+    showNotification('New data source target added', 'success');
+  };
+
+  const handleDeleteSource = (id: string) => {
+    setDataSources(prev => prev.filter(s => s.id !== id));
+    showNotification('Data source target removed', 'info');
+  };
+
+  // --- DOCUMENT MANAGEMENT ---
+  const handleUploadDoc = (doc: DocumentationFile) => {
+    setDocs(prev => [doc, ...prev]);
+    showNotification('Document uploaded and saved', 'success');
+  };
+
+  const handleDeleteDoc = (id: string) => {
+    const docToDelete = docs.find(d => d.id === id);
+    setDocs(prev => prev.filter(d => d.id !== id));
+    showNotification(`Document "${docToDelete?.name || 'File'}" deleted permanently`, 'info');
   };
 
   const NavItem = ({ view, label, isNew }: { view: View, label: string, isNew?: boolean }) => (
@@ -235,13 +302,11 @@ const App: React.FC = () => {
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static flex-shrink-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-lg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+              <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+              <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+            </svg>
             <div>
                <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
                <p className="text-xs text-slate-400">Intelligence System</p>
@@ -250,7 +315,7 @@ const App: React.FC = () => {
           
           <nav className="space-y-2">
             <NavItem view="dashboard" label="Dashboard" />
-            <NavItem view="ecommerce" label="E-Commerce Intel" isNew={true} />
+            <NavItem view="ecommerce" label="E-Commerce Intel" />
             <NavItem view="datasources" label="Data Sources" />
             <NavItem view="history" label="History Log" />
             <NavItem view="alerts" label="Alerts" />
@@ -276,11 +341,11 @@ const App: React.FC = () => {
          {/* Mobile Header */}
          <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-30 shrink-0">
              <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                         <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                     </svg>
-                 </div>
+                 <svg className="w-8 h-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+                    <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+                    <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+                 </svg>
                  <span className="font-bold text-gray-900">ARTEMIS</span>
              </div>
              <button 
@@ -384,6 +449,9 @@ const App: React.FC = () => {
                 {currentView === 'history' && <HistoryView articles={articles} />}
                 {currentView === 'datasources' && (
                     <DataSourcesView 
+                        sources={dataSources}
+                        onAddSource={handleAddSource}
+                        onDeleteSource={handleDeleteSource}
                         onArticlesFound={handleBatchAnalysisComplete}
                         notify={showNotification}
                         settings={settings}
@@ -403,8 +471,14 @@ const App: React.FC = () => {
                         onUpdateSettings={setSettings}
                     />
                 )}
-                {currentView === 'alerts' && <AlertsView alerts={alerts} />}
-                {currentView === 'usage' && <UsageGuideView />}
+                {currentView === 'alerts' && <AlertsView alerts={alerts} onDeleteAlert={handleDeleteAlert} />}
+                {currentView === 'usage' && (
+                  <UsageGuideView 
+                    docs={docs}
+                    onUploadDoc={handleUploadDoc}
+                    onDeleteDoc={handleDeleteDoc}
+                  />
+                )}
             </div>
          </main>
       </div>
