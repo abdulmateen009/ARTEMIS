@@ -276,8 +276,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               <p className="text-sm text-gray-500">Receive instant automated notifications for high-risk articles found during scans.</p>
             </div>
             <button 
-              onClick={() => onUpdateSettings({...settings, emailEnabled: !settings.emailEnabled})}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${settings.emailEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+              onClick={() => isAdmin && onUpdateSettings({...settings, emailEnabled: !settings.emailEnabled})}
+              disabled={!isAdmin}
+              title={!isAdmin ? "Admin access required" : ""}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${settings.emailEnabled ? 'bg-blue-600' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               role="switch"
               aria-checked={settings.emailEnabled}
             >
@@ -291,8 +293,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               type="email" 
               value={settings.email}
               onChange={(e) => onUpdateSettings({...settings, email: e.target.value})}
-              disabled={!settings.emailEnabled}
-              className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white disabled:bg-gray-100 disabled:text-gray-400 disabled:caret-gray-500 transition-colors"
+              disabled={!settings.emailEnabled || !isAdmin}
+              className={`w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white disabled:bg-gray-100 disabled:text-gray-400 disabled:caret-gray-500 transition-colors ${!isAdmin && settings.emailEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
           </div>
         </div>

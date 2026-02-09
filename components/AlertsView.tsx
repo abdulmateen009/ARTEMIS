@@ -282,7 +282,8 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts, onDeleteAlert }) => {
                               type="email"
                               value={config.email}
                               onChange={(e) => handleEmailChange(config.id, e.target.value)}
-                              className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition-colors"
+                              disabled={!isAdmin}
+                              className={`mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 px-2 border text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition-colors ${!isAdmin ? 'cursor-not-allowed opacity-60' : ''}`}
                               placeholder="Enter email address"
                           />
                       </div>
@@ -292,8 +293,11 @@ const AlertsView: React.FC<AlertsViewProps> = ({ alerts, onDeleteAlert }) => {
                    <div className="flex items-center ml-4">
                       <button
                          onClick={() => handleToggleEmail(config.id)}
+                         disabled={!isAdmin}
+                         title={!isAdmin ? "Admin access required" : ""}
                          className={`
                             px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all shadow-sm
+                            ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}
                             ${config.isActive 
                                 ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
                                 : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
