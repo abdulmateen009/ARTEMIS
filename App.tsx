@@ -302,11 +302,16 @@ const App: React.FC = () => {
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static flex-shrink-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-10">
-            <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-lg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-              <path d="M20 10L30 32H10L20 10Z" fill="white"/>
-              <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+            {/* LOGO REPLACEMENT */}
+            <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-xl" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="10" fill="#2563EB"/>
+              <path d="M20 9L29 31H11L20 9Z" fill="white" fillOpacity="0.1"/>
+              <path fillRule="evenodd" clipRule="evenodd" d="M20 12L26 27H14L20 12ZM20 17L22 22H18L20 17Z" fill="white"/>
+              <circle cx="20" cy="9" r="2.5" fill="#93C5FD"/>
+              <circle cx="11" cy="31" r="2.5" fill="#93C5FD"/>
+              <circle cx="29" cy="31" r="2.5" fill="#93C5FD"/>
             </svg>
+          
             <div>
                <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
                <p className="text-xs text-slate-400">Intelligence System</p>
@@ -341,10 +346,14 @@ const App: React.FC = () => {
          {/* Mobile Header */}
          <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-30 shrink-0">
              <div className="flex items-center gap-2">
+                 {/* MOBILE LOGO REPLACEMENT */}
                  <svg className="w-8 h-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-                    <path d="M20 10L30 32H10L20 10Z" fill="white"/>
-                    <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+                    <rect width="40" height="40" rx="10" fill="#2563EB"/>
+                    <path d="M20 9L29 31H11L20 9Z" fill="white" fillOpacity="0.1"/>
+                    <path fillRule="evenodd" clipRule="evenodd" d="M20 12L26 27H14L20 12ZM20 17L22 22H18L20 17Z" fill="white"/>
+                    <circle cx="20" cy="9" r="2.5" fill="#93C5FD"/>
+                    <circle cx="11" cy="31" r="2.5" fill="#93C5FD"/>
+                    <circle cx="29" cy="31" r="2.5" fill="#93C5FD"/>
                  </svg>
                  <span className="font-bold text-gray-900">ARTEMIS</span>
              </div>
