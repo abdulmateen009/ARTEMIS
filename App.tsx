@@ -304,12 +304,9 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3 mb-10">
             {/* LOGO REPLACEMENT */}
             <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-xl" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="10" fill="#2563EB"/>
-              <path d="M20 9L29 31H11L20 9Z" fill="white" fillOpacity="0.1"/>
-              <path fillRule="evenodd" clipRule="evenodd" d="M20 12L26 27H14L20 12ZM20 17L22 22H18L20 17Z" fill="white"/>
-              <circle cx="20" cy="9" r="2.5" fill="#93C5FD"/>
-              <circle cx="11" cy="31" r="2.5" fill="#93C5FD"/>
-              <circle cx="29" cy="31" r="2.5" fill="#93C5FD"/>
+              <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+              <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+              <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
             </svg>
           
             <div>
@@ -348,12 +345,9 @@ const App: React.FC = () => {
              <div className="flex items-center gap-2">
                  {/* MOBILE LOGO REPLACEMENT */}
                  <svg className="w-8 h-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="40" height="40" rx="10" fill="#2563EB"/>
-                    <path d="M20 9L29 31H11L20 9Z" fill="white" fillOpacity="0.1"/>
-                    <path fillRule="evenodd" clipRule="evenodd" d="M20 12L26 27H14L20 12ZM20 17L22 22H18L20 17Z" fill="white"/>
-                    <circle cx="20" cy="9" r="2.5" fill="#93C5FD"/>
-                    <circle cx="11" cy="31" r="2.5" fill="#93C5FD"/>
-                    <circle cx="29" cy="31" r="2.5" fill="#93C5FD"/>
+                   <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+                   <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+                   <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
                  </svg>
                  <span className="font-bold text-gray-900">ARTEMIS</span>
              </div>
