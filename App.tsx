@@ -301,13 +301,20 @@ const App: React.FC = () => {
       {/* Sidebar Navigation */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static flex-shrink-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-10">
+          <div 
+            className="flex items-center gap-3 mb-10 cursor-pointer"
+            onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }}
+          >
             {/* LOGO REPLACEMENT */}
-            <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-xl" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-              <path d="M20 10L30 32H10L20 10Z" fill="white"/>
-              <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
-            </svg>
+            {settings.customLogo ? (
+               <img src={settings.customLogo} alt="Logo" className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-xl object-cover bg-white" />
+            ) : (
+                <svg className="w-10 h-10 shrink-0 shadow-lg shadow-blue-500/20 rounded-xl" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+                <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+                <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+                </svg>
+            )}
           
             <div>
                <h1 className="text-xl font-bold tracking-tight">ARTEMIS</h1>
@@ -342,13 +349,20 @@ const App: React.FC = () => {
          
          {/* Mobile Header */}
          <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-30 shrink-0">
-             <div className="flex items-center gap-2">
+             <div 
+               className="flex items-center gap-2 cursor-pointer"
+               onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }}
+             >
                  {/* MOBILE LOGO REPLACEMENT */}
-                 <svg className="w-8 h-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                   <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-                   <path d="M20 10L30 32H10L20 10Z" fill="white"/>
-                   <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
-                 </svg>
+                 {settings.customLogo ? (
+                    <img src={settings.customLogo} alt="Logo" className="w-8 h-8 shrink-0 rounded-lg object-cover bg-white" />
+                 ) : (
+                    <svg className="w-8 h-8 shrink-0" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+                    <path d="M20 10L30 32H10L20 10Z" fill="white"/>
+                    <path d="M20 14L27 30H13L20 14Z" fill="#3B82F6"/>
+                    </svg>
+                 )}
                  <span className="font-bold text-gray-900">ARTEMIS</span>
              </div>
              <button 
@@ -395,7 +409,10 @@ const App: React.FC = () => {
 
                 {currentView === 'dashboard' && (
                 <>
-                    <DashboardStats articles={articles} />
+                    <DashboardStats 
+                        articles={articles} 
+                        onViewHistory={() => setCurrentView('history')}
+                    />
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                         <div className="xl:col-span-1">
                             <div className="sticky top-8">
