@@ -4,9 +4,10 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis
 
 interface DashboardStatsProps {
   articles: ArticleAnalysis[];
+  onViewHistory?: () => void;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ articles }) => {
+const DashboardStats: React.FC<DashboardStatsProps> = ({ articles, onViewHistory }) => {
   if (articles.length === 0) return null;
 
   const totalArticles = articles.length;
@@ -37,13 +38,21 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ articles }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-      {/* Key Metrics Cards */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden group">
+      {/* Key Metrics Cards - Total Articles */}
+      <div 
+        onClick={onViewHistory}
+        className={`bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden group ${onViewHistory ? 'cursor-pointer hover:border-blue-300 hover:shadow-md transition-all' : ''}`}
+      >
         <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <svg className="w-20 h-20 text-gray-900" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
         </div>
-        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Articles</h3>
+        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">Total Articles</h3>
         <p className="text-4xl font-black text-gray-900 mt-2">{totalArticles}</p>
+        {onViewHistory && (
+             <div className="mt-2 text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 absolute bottom-4">
+                 View Full List <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+             </div>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden">

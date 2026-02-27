@@ -83,6 +83,7 @@ export interface AppSettings {
   email: string;
   emailEnabled: boolean;
   sensitivity: string;
+  customLogo?: string; // Base64 string for the logo
 }
 
 export enum ProcessingStatus {

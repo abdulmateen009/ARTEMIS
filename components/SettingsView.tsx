@@ -19,6 +19,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateSettings
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Admin Security State
   const [isAdmin, setIsAdmin] = useState(false);
@@ -103,6 +104,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     };
     reader.readAsText(file);
     event.target.value = ''; // Reset
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+            notify('Image size too large. Max 2MB.', 'error');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (event.target?.result) {
+                onUpdateSettings({ ...settings, customLogo: event.target.result as string });
+                notify('System logo updated successfully', 'success');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+    // Reset
+    if(e.target) e.target.value = '';
   };
 
   const handleClearRequest = () => {
@@ -297,6 +318,55 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               className={`w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-gray-900 text-white placeholder-gray-500 caret-white disabled:bg-gray-100 disabled:text-gray-400 disabled:caret-gray-500 transition-colors ${!isAdmin && settings.emailEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
           </div>
+        </div>
+      </div>
+
+      {/* System Branding (Logo Upload) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-800">System Branding</h2>
+            <p className="text-sm text-gray-500">Customize the application identity and logo.</p>
+        </div>
+        <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="shrink-0">
+                {settings.customLogo ? (
+                    <img src={settings.customLogo} alt="Current Logo" className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-100 bg-white" />
+                ) : (
+                    <div className="w-20 h-20 rounded-xl bg-blue-500 flex items-center justify-center shadow-md">
+                         <span className="text-white font-bold text-3xl">A</span>
+                    </div>
+                )}
+            </div>
+            <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Application Logo</h3>
+                <div className="flex gap-3 flex-wrap">
+                    <button 
+                        onClick={() => logoInputRef.current?.click()}
+                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        Upload New Image
+                    </button>
+                    {settings.customLogo && (
+                        <button 
+                            onClick={() => onUpdateSettings({ ...settings, customLogo: undefined })}
+                            className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-xs font-bold text-red-600 hover:bg-red-100 transition-colors shadow-sm"
+                        >
+                            Reset to Default
+                        </button>
+                    )}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                    Recommended: 80x80px PNG or SVG. Max 2MB. 
+                    <br/>This logo will replace the default icon in the sidebar and header.
+                </p>
+                <input 
+                    type="file" 
+                    ref={logoInputRef} 
+                    onChange={handleLogoChange} 
+                    accept="image/*" 
+                    className="hidden" 
+                />
+            </div>
         </div>
       </div>
 
